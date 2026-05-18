@@ -1,0 +1,46 @@
+[project]
+name = "viral-scRNAseq-tool"
+version = "1.1.0"
+requires-python = ">=3.12"
+dependencies=[
+    "pandas>=2.2,<3",
+    "rdkit",
+    "pubchempy",
+    "certifi"
+]
+readme = "README.md"
+authors = [
+    {name = "John T. Hardin", email = "johnhardin2021@gmail.com"}
+]
+description = "Create a database of chemical compounds from an .sdf file and visualise in a GUI"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "mypy>=1.0",
+    "ruff"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+viral-scRNAseq-tool="viral_platform.gui:app"
+
+[tool.pytest.ini_options]
+testpaths=["tests"]
+addopts = ["-q"]
+
+[tool.mypy]
+python_version="3.13"
+disallow_untyped_defs=true
+warn_return_any=true
+warn_unused_configs=true
+exclude=[
+    "tests/",
+    "venv/",
+]
