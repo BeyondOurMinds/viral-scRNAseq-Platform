@@ -1,18 +1,15 @@
 [project]
 name = "viral-scRNAseq-tool"
-version = "1.1.0"
-requires-python = ">=3.12"
+version = "0"
+requires-python = ">=3.00"
 dependencies=[
-    "pandas>=2.2,<3",
-    "rdkit",
-    "pubchempy",
-    "certifi"
+    "pandas>=3"
 ]
 readme = "README.md"
 authors = [
     {name = "John T. Hardin", email = "johnhardin2021@gmail.com"}
 ]
-description = "Create a database of chemical compounds from an .sdf file and visualise in a GUI"
+description = "An easy-to-use platform for viral scRNA-seq analysis, built for wet-lab users"
 
 [project.optional-dependencies]
 dev = [
