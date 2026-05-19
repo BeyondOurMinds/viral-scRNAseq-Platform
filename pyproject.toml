@@ -28,7 +28,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [project.scripts]
-viral-scRNAseq-tool="viral_platform.gui:app"
+viral-scRNAseq-tool="viral_platform.main:main"
 
 [tool.pytest.ini_options]
 testpaths=["tests"]
