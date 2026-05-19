@@ -1,5 +1,5 @@
 def test_cli_imports():
     # Basic smoke test to ensure the CLI entry point imports cleanly.
-    from viral_platform.gui import app
+    from viral_platform.gui import ViralApp
 
-    assert app is not None
+    assert ViralApp is not None
