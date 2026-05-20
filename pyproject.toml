@@ -5,7 +5,8 @@ requires-python = ">=3.12"
 dependencies=[
     "pandas>=3.0,<4",
     "numpy>=2,<3",
-    "dash>=4,<5"
+    "dash>=4,<5",
+    "scanpy[leiden]>=1.11.0"
 ]
 readme = "README.md"
 authors = [
