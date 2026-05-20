@@ -1,5 +1,5 @@
 [project]
-name = "viral-scRNAseq-tool"
+name = "viral-scrnaseq-tool"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies=[
@@ -28,7 +28,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [project.scripts]
-viral-scRNAseq-tool="viral_platform.main:main"
+viral-scrnaseq-tool="viral_platform.main:main"
 
 [tool.pytest.ini_options]
 testpaths=["tests"]
