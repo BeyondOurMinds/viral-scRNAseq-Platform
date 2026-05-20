@@ -1,5 +1,5 @@
 [project]
-name = "viral-scrnaseq-tool"
+name = "scviewer"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies=[
@@ -29,7 +29,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [project.scripts]
-viral-scrnaseq-tool="viral_platform.main:main"
+scviewer="viral_platform.main:main"
 
 [tool.pytest.ini_options]
 testpaths=["tests"]
