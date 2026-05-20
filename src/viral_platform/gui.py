@@ -1,5 +1,5 @@
 from viral_platform.app import create_app
-from viral_platform.layout import create_layout
+from viral_platform.layout.layout import create_layout
 
 class ViralApp:
     def __init__(self):
