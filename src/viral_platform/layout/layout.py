@@ -1,6 +1,7 @@
 from dash import html
 from .header import create_header
-from .sidebar import create_sidebar
+from .sidebar import collapsible_sidebar, toggle_sidebar
+from .upload_panel import create_upload_panel
 
 def create_layout():
     return html.Div(
@@ -11,6 +12,8 @@ def create_layout():
         }, 
         children=[
         create_header(),
-        create_sidebar(),
+        toggle_sidebar(),
+        collapsible_sidebar(),
+        create_upload_panel(),
     ]
     )
