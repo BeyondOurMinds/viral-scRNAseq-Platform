@@ -1,4 +1,4 @@
-from dash import html
+from dash import html, Dash, dcc
 
 def create_upload_panel():
     return html.Div(
@@ -10,7 +10,8 @@ def create_upload_panel():
         },
         children=[
             html.H2("Upload Panel"),
-            html.P("This is where users can upload their viral scRNA-seq data."),
+            html.Button("Upload File", id="upload-button", style={"align": "center"}),
+            dcc.Input(type="text", id="file-input", value="Please Select a File", readOnly=True),
         ],
         id="upload-panel"
     )
