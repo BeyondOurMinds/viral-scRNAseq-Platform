@@ -9,6 +9,7 @@ def collapsible_sidebar():
             "borderRadius": "5px",
             "width": "250px",
             "position": "fixed",
+            "zIndex": "999",
             "height": "calc(100vh - 70px)",
             "overflowY": "auto",
             "overflowX": "hidden",

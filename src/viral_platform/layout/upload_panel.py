@@ -1,4 +1,5 @@
 from dash import html, Dash, dcc
+import dash_bootstrap_components as dbc
 
 def create_upload_panel():
     return html.Div(
