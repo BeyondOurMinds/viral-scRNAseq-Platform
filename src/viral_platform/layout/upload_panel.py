@@ -12,4 +12,5 @@ def create_upload_panel():
             html.H2("Upload Panel"),
             html.P("This is where users can upload their viral scRNA-seq data."),
         ],
+        id="upload-panel"
     )

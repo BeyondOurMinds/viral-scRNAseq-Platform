@@ -16,12 +16,12 @@ def collapsible_sidebar():
         },
         children=[
             html.H2("Menu"),
-            html.P("Fake button 1"),
-            html.P("Fake button 2"),
-            html.P("Fake button 3"),
-            html.P("Fake button 4"),
-            html.P("Fake button 5"),
-            html.P("Fake button 6"),
+            html.A("Upload Data", href="#upload-panel", style={"display": "block", "margin": "10px 0", "borderRadius": "3px", "padding": "5px", "backgroundColor": "#007bff", "color": "white", "textDecoration": "none"}),
+            html.Button("Option 2"),
+            html.Button("Option 3"),
+            html.Button("Option 4"),
+            html.Button("Option 5"),
+            html.Button("Option 6"),
         ],
         hidden=True,
         id="sidebar"
