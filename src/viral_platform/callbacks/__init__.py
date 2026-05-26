@@ -1,3 +1,4 @@
 from .sidebar_callbacks import register_sidebar_callbacks
+from .upload_callbacks import register_upload_callbacks
 
-__all__ = ["register_sidebar_callbacks"]
+__all__ = ["register_sidebar_callbacks", "register_upload_callbacks"]
