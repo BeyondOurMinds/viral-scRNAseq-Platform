@@ -2,6 +2,8 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc
 import dash_uploader as du
 
+
+# Function to create the upload panel layout
 def create_upload_panel():
     return html.Div(
         style={
@@ -14,7 +16,7 @@ def create_upload_panel():
             dbc.Container([
                 dbc.Row([
                     dbc.Col(du.Upload(
-                        id="h5ad-uploader",
+                        id="file-uploader",
                         text="Drag and Drop or Select File",
                         text_completed="Uploaded: ",
                         max_file_size=4096,
