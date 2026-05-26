@@ -1,4 +1,4 @@
-from dash import html, Dash, dcc
+from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 def create_upload_panel():
@@ -30,7 +30,7 @@ def create_upload_panel():
                             'margin': '10px 0'
                         },
                         multiple=False,
-                        accept='.csv,.tsv,.xlsx'
+                        accept='.csv,.tsv,.xlsx' # tempory file types
                     )),
                 ]),
             ]),
