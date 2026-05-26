@@ -15,12 +15,13 @@ def create_upload_panel():
             html.H2("Upload Data"),
             dbc.Container([
                 dbc.Row([
+                    # The file uploader component from dash_uploader, styled to fit the panel design. It allows users to drag and drop files or select them manually, with specific settings for file types and size limits.
                     dbc.Col(du.Upload(
                         id="file-uploader",
                         text="Drag and Drop or Select File",
                         text_completed="Uploaded: ",
-                        max_file_size=4096,
-                        chunk_size=5,
+                        max_file_size=4096, # 4GB limit for files
+                        chunk_size=5, # 5MB chunk size for uploads
                         filetypes=["h5ad"],
                         default_style={
                             "width": "98%",
