@@ -5,7 +5,8 @@ def collapsible_sidebar():
         style={
             "backgroundColor": "#f8f9fa",
             "padding": "10px",
-            "margin": "10px",
+            "top": "10px",
+            "left": "0px",
             "borderRadius": "5px",
             "width": "250px",
             "position": "fixed",
@@ -18,7 +19,7 @@ def collapsible_sidebar():
         children=[
             html.H2("Menu"),
             html.A("Upload Data", href="#upload-panel", style={"display": "block", "margin": "10px 0", "borderRadius": "3px", "padding": "5px", "backgroundColor": "#007bff", "color": "white", "textDecoration": "none"}),
-            html.Button("Option 2"),
+            html.A("Quality Control", href="#qc-panel", style={"display": "block", "margin": "10px 0", "borderRadius": "3px", "padding": "5px", "backgroundColor": "#007bff", "color": "white", "textDecoration": "none"}),
             html.Button("Option 3"),
             html.Button("Option 4"),
             html.Button("Option 5"),
@@ -31,10 +32,11 @@ def collapsible_sidebar():
 def toggle_sidebar():
     return html.Div(
         style={
-            "top": "10px",
-            "left": "10px",
+            "top": "18px",
+            "left": "0px",
             "zIndex": "1000",
+            "position": "fixed",
         },
         children=[
-            html.Button("Menu", id="toggle-button", n_clicks=0)
+            html.Button("Menu", id="toggle-button", n_clicks=0, style={"backgroundColor": "#007bff", "color": "white", "border": "none", "padding": "10px 20px", "borderRadius": "5px", "cursor": "pointer", "height": "40px"})
         ])

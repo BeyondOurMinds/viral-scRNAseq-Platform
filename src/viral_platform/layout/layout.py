@@ -2,6 +2,7 @@ from dash import html
 from .header import create_header
 from .sidebar import collapsible_sidebar, toggle_sidebar
 from .upload_panel import create_upload_panel
+from .QC_panel import create_qc_panel
 
 def create_layout():
     return html.Div(
@@ -15,5 +16,6 @@ def create_layout():
         toggle_sidebar(),
         collapsible_sidebar(),
         create_upload_panel(),
+        create_qc_panel(),
     ]
     )

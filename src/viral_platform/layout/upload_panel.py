@@ -10,6 +10,8 @@ def create_upload_panel():
             "backgroundColor": "#e9ecef",
             "padding": "20px",
             "borderRadius": "5px",
+            "border": "1px solid #000000",
+            "margin": "0 0 20px 0",
         },
         children=[
             html.H2("Upload Data"),
