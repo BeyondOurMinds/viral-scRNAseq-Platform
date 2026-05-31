@@ -17,6 +17,7 @@ def load_file_from_path(file_path):
     if normalized_path.lower().endswith(".h5ad"):
         adata = sc.read_h5ad(normalized_path)
         print(f"Loaded h5ad from path with {adata.n_obs} cells and {adata.n_vars} genes.")
+        print(normalized_path)
         return adata
 
     return None
