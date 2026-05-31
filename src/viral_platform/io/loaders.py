@@ -1,6 +1,8 @@
 import os
 import scanpy as sc
 
+from viral_platform.state.dataset_store import set_dataset
+
 # Utility function to load accepted file types from a given file path, with error handling.
 # This is used by the upload callback to read the uploaded file and return an AnnData object.
 # It checks for file existence, correct extension, and handles exceptions during loading.
@@ -18,6 +20,7 @@ def load_file_from_path(file_path):
         adata = sc.read_h5ad(normalized_path)
         print(f"Loaded h5ad from path with {adata.n_obs} cells and {adata.n_vars} genes.")
         print(normalized_path)
+        set_dataset(adata)
         return adata
 
     return None
