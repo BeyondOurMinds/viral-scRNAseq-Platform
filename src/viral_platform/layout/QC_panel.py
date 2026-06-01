@@ -13,7 +13,7 @@ def create_qc_panel():
         children=[
             html.H2("Quality Control"),
             html.P("This panel will contain QC metrics and visualizations for the uploaded dataset."),
-            # Placeholder for QC content, to be implemented in future iterations
+            html.Div(id="qc-plot-container", children="Upload a dataset to view QC plots.")
         ],
         id="qc-panel"
     )
