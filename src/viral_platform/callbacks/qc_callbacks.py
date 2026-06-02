@@ -2,7 +2,7 @@ from dash import Input, Output, State, no_update
 import plotly.express as px
 
 from viral_platform.plotting.QC_plots import create_qc_plots
-from viral_platform.state.dataset_store import get_dataset, get_working_dataset, set_working_dataset
+from viral_platform.state.dataset_store import get_working_dataset, set_working_dataset
 
 
 def register_qc_callbacks(app):

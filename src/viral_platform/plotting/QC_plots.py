@@ -1,7 +1,5 @@
 import plotly.express as px
 from dash import dcc, html
-import scanpy as sc
-from viral_platform.state.dataset_store import set_working_dataset
 
 def create_qc_plots(adata):
     if adata is None:
