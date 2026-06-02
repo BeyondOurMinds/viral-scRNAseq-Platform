@@ -6,17 +6,7 @@ from viral_platform.state.dataset_store import set_working_dataset
 def create_qc_plots(adata):
     if adata is None:
         return "No dataset available for QC plotting."
-
-    # Mark mitochondrial genes so scanpy computes pct_counts_mt.
-    adata.var["mt"] = adata.var_names.str.upper().str.startswith("MT-")
-
-    sc.pp.calculate_qc_metrics(
-        adata,
-        qc_vars=["mt"],
-        inplace=True,
-    )
-    set_working_dataset(adata)
-
+    
     required_cols = ["total_counts", "n_genes_by_counts", "pct_counts_mt"]
     missing_cols = [col for col in required_cols if col not in adata.obs]
     if missing_cols:

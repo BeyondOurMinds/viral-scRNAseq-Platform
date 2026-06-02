@@ -8,7 +8,7 @@ from viral_platform.state.dataset_store import get_dataset, get_working_dataset,
 def register_qc_callbacks(app):
     @app.callback(Output("qc-temp-container", "children"), Input("active-dataset-version", "data"))
     def render_qc_plots(_dataset_version):
-        adata = get_dataset()
+        adata = get_working_dataset()
         if adata is None:
             return "Upload a dataset to view QC plots."
 

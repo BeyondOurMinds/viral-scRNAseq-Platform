@@ -1,7 +1,7 @@
 import os
 import scanpy as sc
 
-from viral_platform.state.dataset_store import set_dataset
+from viral_platform.state.dataset_store import set_dataset, set_working_dataset
 
 # Utility function to load accepted file types from a given file path, with error handling.
 # This is used by the upload callback to read the uploaded file and return an AnnData object.
@@ -21,6 +21,16 @@ def load_file_from_path(file_path):
         print(f"Loaded h5ad from path with {adata.n_obs} cells and {adata.n_vars} genes.")
         print(normalized_path)
         set_dataset(adata)
+
+        # Mark mitochondrial genes so scanpy computes pct_counts_mt.
+        adata.var["mt"] = adata.var_names.str.upper().str.startswith("MT-")
+        sc.pp.calculate_qc_metrics(
+            adata,
+            qc_vars=["mt"],
+            inplace=True,
+        )
+        set_working_dataset(adata)
+        
         return adata
 
     return None
