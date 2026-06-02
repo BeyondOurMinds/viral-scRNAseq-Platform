@@ -57,27 +57,29 @@ def create_qc_plots(adata):
         dcc.Graph(figure=ncount_fig, id="ncount-violin"),
         dcc.RangeSlider(
             id="min-counts-slider",
-            min=0,
+            min=adata.obs["nCount_RNA"].min(),
             max=adata.obs["nCount_RNA"].max(),
             step=100,
             allowCross=False,
-            value=[0, adata.obs["nCount_RNA"].max()],
+            value=[adata.obs["nCount_RNA"].min(), adata.obs["nCount_RNA"].max()],
         ),
         dcc.Graph(figure=nfeature_fig, id="nfeature-violin"),
         dcc.RangeSlider(
             id="min-features-slider",
-            min=0,
+            min=adata.obs["nFeature_RNA"].min(),
             max=adata.obs["nFeature_RNA"].max(),
             step=10,
             allowCross=False,
-            value=[0, adata.obs["nFeature_RNA"].max()],
+            value=[adata.obs["nFeature_RNA"].min(), adata.obs["nFeature_RNA"].max()],
         ),
         dcc.Graph(figure=percent_mt_fig, id="percent-mt-violin"),
         dcc.Slider(
             id="max-percent-mt-slider",
-            min=0,
+            min=adata.obs["percent.mt"].min(),
             max=adata.obs["percent.mt"].max(),
-            step=1,
+            value=adata.obs["percent.mt"].max(),
         ),
-    ])
+        html.Button("Apply QC Filters", id="apply-qc-filters-button", n_clicks=0, style={"marginTop": "20px"})
+    ],
+    id="qc-plot-container")
 
