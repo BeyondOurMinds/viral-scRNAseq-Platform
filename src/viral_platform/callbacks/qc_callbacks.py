@@ -6,13 +6,19 @@ from viral_platform.state.dataset_store import get_working_dataset, set_working_
 
 
 def register_qc_callbacks(app):
-    @app.callback(Output("qc-temp-container", "children"), Input("active-dataset-version", "data"))
-    def render_qc_plots(_dataset_version):
+    @app.callback(
+        Output("qc-generate-loading-signal", "children"),
+        Output("qc-temp-container", "children"),
+        Input("generate-qc-plots-button", "n_clicks")
+    )
+    def render_qc_plots(n_clicks):
+        if n_clicks == 0:
+            return no_update, "Upload a dataset to view QC plots."
         adata = get_working_dataset()
         if adata is None:
-            return "Upload a dataset to view QC plots."
+            return "done", "Upload a dataset to view QC plots."
 
-        return create_qc_plots(adata)
+        return "done", create_qc_plots(adata)
     
     @app.callback(
         Output("ncount-violin", "figure"),

@@ -8,7 +8,7 @@ def create_layout():
     return html.Div(
         style={
             "overflowY": "scroll",
-            "height": "400px",
+            "height": "100vh",
             "padding": "10px",
         }, 
         children=[

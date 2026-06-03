@@ -1,4 +1,5 @@
-from dash import html
+from dash import html, dcc
+import dash_bootstrap_components as dbc
 
 def create_qc_panel():
     return html.Div(
@@ -11,7 +12,8 @@ def create_qc_panel():
         },
         children=[
             html.H2("Quality Control"),
-            html.P("This panel will contain QC metrics and visualizations for the uploaded dataset."),
+            dbc.Button("Generate QC Plots", id="generate-qc-plots-button", n_clicks=0, color="primary", className="mb-3"),
+            dcc.Loading(html.Div(id="qc-generate-loading-signal", style={"display": "none"})),
             html.Div(id="qc-temp-container", children="Upload a dataset to view QC plots.")
         ],
         id="qc-panel"
