@@ -17,10 +17,10 @@ def collapsible_sidebar():
             "boxSizing": "border-box",
         },
         children=[
-            html.H2("Menu"),
+            html.H2("Menu", style={"textAlign": "center", "color": "#343a40"}),
             html.A("Upload Data", href="#upload-panel", style={"display": "block", "margin": "10px 0", "borderRadius": "3px", "padding": "5px", "backgroundColor": "#007bff", "color": "white", "textDecoration": "none"}),
             html.A("Quality Control", href="#qc-panel", style={"display": "block", "margin": "10px 0", "borderRadius": "3px", "padding": "5px", "backgroundColor": "#007bff", "color": "white", "textDecoration": "none"}),
-            html.Button("Option 3"),
+            html.A("Preprocessing", href="#preprocess-panel", style={"display": "block", "margin": "10px 0", "borderRadius": "3px", "padding": "5px", "backgroundColor": "#007bff", "color": "white", "textDecoration": "none"}),
             html.Button("Option 4"),
             html.Button("Option 5"),
             html.Button("Option 6"),
