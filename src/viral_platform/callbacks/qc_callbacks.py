@@ -1,8 +1,12 @@
-from dash import Input, Output, State, no_update
+import logging
+
+from dash import Input, Output, State, html, no_update
 import plotly.express as px
 
 from viral_platform.plotting.QC_plots import create_qc_plots
 from viral_platform.state.dataset_store import get_working_dataset, set_working_dataset
+
+logger = logging.getLogger(__name__)
 
 
 def register_qc_callbacks(app):
@@ -16,9 +20,13 @@ def register_qc_callbacks(app):
             return no_update, "Upload a dataset to view QC plots."
         adata = get_working_dataset()
         if adata is None:
+            logger.warning("QC plot generation requested without an active dataset.")
             return "done", "Upload a dataset to view QC plots."
-
-        return "done", create_qc_plots(adata)
+        try:
+            return "done", create_qc_plots(adata)
+        except Exception:
+            logger.exception("Failed to render QC plots.")
+            return "done", "An error occurred while generating QC plots."
     
     @app.callback(
         Output("ncount-violin", "figure"),
@@ -26,19 +34,29 @@ def register_qc_callbacks(app):
     )
     def update_ncount_violin(min_counts):
         adata = get_working_dataset()
-        
-        ncount_fig = px.violin(
-            adata.obs,
-            y="nCount_RNA",
-            box=True,
-            points=False,
-            title="nCount_RNA",
-        )
-        ncount_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Counts")
+        if adata is None:
+            logger.warning("nCount violin update requested without dataset.")
+            return px.violin(title="nCount_RNA")
 
-        ncount_fig.add_hline(y=min_counts[0], line_dash="dash", line_color="red", annotation_text="Min Counts", annotation_position="top left")
-        ncount_fig.add_hline(y=min_counts[1], line_dash="dash", line_color="red", annotation_text="Max Counts", annotation_position="top right")
-        return ncount_fig
+        if not min_counts or len(min_counts) != 2:
+            min_counts = [adata.obs["nCount_RNA"].min(), adata.obs["nCount_RNA"].max()]
+        
+        try:
+            ncount_fig = px.violin(
+                adata.obs,
+                y="nCount_RNA",
+                box=True,
+                points=False,
+                title="nCount_RNA",
+            )
+            ncount_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Counts")
+
+            ncount_fig.add_hline(y=min_counts[0], line_dash="dash", line_color="red", annotation_text="Min Counts", annotation_position="top left")
+            ncount_fig.add_hline(y=min_counts[1], line_dash="dash", line_color="red", annotation_text="Max Counts", annotation_position="top right")
+            return ncount_fig
+        except Exception:
+            logger.exception("Failed to update nCount violin figure.")
+            return px.violin(title="nCount_RNA")
     
     @app.callback(
         Output("nfeature-violin", "figure"),
@@ -46,19 +64,29 @@ def register_qc_callbacks(app):
     )
     def update_nfeature_violin(min_features):
         adata = get_working_dataset()
-        
-        nfeature_fig = px.violin(
-            adata.obs,
-            y="nFeature_RNA",
-            box=True,
-            points=False,
-            title="nFeature_RNA",
-        )
-        nfeature_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Features")
+        if adata is None:
+            logger.warning("nFeature violin update requested without dataset.")
+            return px.violin(title="nFeature_RNA")
 
-        nfeature_fig.add_hline(y=min_features[0], line_dash="dash", line_color="red", annotation_text="Min Features", annotation_position="top left")
-        nfeature_fig.add_hline(y=min_features[1], line_dash="dash", line_color="red", annotation_text="Max Features", annotation_position="top right")
-        return nfeature_fig
+        if not min_features or len(min_features) != 2:
+            min_features = [adata.obs["nFeature_RNA"].min(), adata.obs["nFeature_RNA"].max()]
+        
+        try:
+            nfeature_fig = px.violin(
+                adata.obs,
+                y="nFeature_RNA",
+                box=True,
+                points=False,
+                title="nFeature_RNA",
+            )
+            nfeature_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Features")
+
+            nfeature_fig.add_hline(y=min_features[0], line_dash="dash", line_color="red", annotation_text="Min Features", annotation_position="top left")
+            nfeature_fig.add_hline(y=min_features[1], line_dash="dash", line_color="red", annotation_text="Max Features", annotation_position="top right")
+            return nfeature_fig
+        except Exception:
+            logger.exception("Failed to update nFeature violin figure.")
+            return px.violin(title="nFeature_RNA")
     
     @app.callback(
         Output("percent-mt-violin", "figure"),
@@ -68,22 +96,27 @@ def register_qc_callbacks(app):
         adata = get_working_dataset()
 
         if adata is None:
+            logger.warning("percent.mt violin update requested without dataset.")
             return px.violin(title="Percent Mitochondrial Genes")
 
         if max_percent_mt is None:
             max_percent_mt = adata.obs["percent.mt"].max()
         
-        percent_mt_fig = px.violin(
-            adata.obs,
-            y="percent.mt",
-            box=True,
-            points=False,
-            title="Percent Mitochondrial Genes",
-        )
-        percent_mt_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Percent")
+        try:
+            percent_mt_fig = px.violin(
+                adata.obs,
+                y="percent.mt",
+                box=True,
+                points=False,
+                title="Percent Mitochondrial Genes",
+            )
+            percent_mt_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Percent")
 
-        percent_mt_fig.add_hline(y=max_percent_mt, line_dash="dash", line_color="red", annotation_text="Max Percent MT", annotation_position="top right")
-        return percent_mt_fig
+            percent_mt_fig.add_hline(y=max_percent_mt, line_dash="dash", line_color="red", annotation_text="Max Percent MT", annotation_position="top right")
+            return percent_mt_fig
+        except Exception:
+            logger.exception("Failed to update percent.mt violin figure.")
+            return px.violin(title="Percent Mitochondrial Genes")
     
     @app.callback(
         Output("qc-plot-container", "children"),
@@ -98,16 +131,32 @@ def register_qc_callbacks(app):
         
         adata = get_working_dataset()
         if adata is None:
+            logger.warning("Apply QC filters clicked without dataset.")
             return "No dataset available to apply QC filters."
 
-        # Here you would implement the actual filtering logic based on the slider values
-        # For example:
-        adata = adata[adata.obs["nCount_RNA"] >= min_counts[0]]
-        adata = adata[adata.obs["nCount_RNA"] <= min_counts[1]]
-        adata = adata[adata.obs["nFeature_RNA"] >= min_features[0]]
-        adata = adata[adata.obs["nFeature_RNA"] <= min_features[1]]
-        adata = adata[adata.obs["percent.mt"] <= max_percent_mt]
+        try:
+            if not min_counts or len(min_counts) != 2:
+                raise ValueError("Invalid nCount range provided.")
+            if not min_features or len(min_features) != 2:
+                raise ValueError("Invalid nFeature range provided.")
+            if max_percent_mt is None:
+                raise ValueError("Invalid percent.mt threshold provided.")
 
+            adata = adata[adata.obs["nCount_RNA"] >= min_counts[0]]
+            adata = adata[adata.obs["nCount_RNA"] <= min_counts[1]]
+            adata = adata[adata.obs["nFeature_RNA"] >= min_features[0]]
+            adata = adata[adata.obs["nFeature_RNA"] <= min_features[1]]
+            adata = adata[adata.obs["percent.mt"] <= max_percent_mt]
 
-        set_working_dataset(adata)  # Update the working dataset with the filtered version
-        return create_qc_plots(adata)
+            set_working_dataset(adata)
+            logger.info(
+                "Applied QC filters: nCount=%s, nFeature=%s, max_percent_mt=%s. Remaining cells: %s",
+                min_counts,
+                min_features,
+                max_percent_mt,
+                adata.n_obs,
+            )
+            return create_qc_plots(adata)
+        except Exception:
+            logger.exception("Failed to apply QC filters.")
+            return html.Div("An error occurred while applying QC filters.")

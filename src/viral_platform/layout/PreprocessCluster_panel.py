@@ -21,6 +21,12 @@ def create_preprocess_cluster_panel():
                     dbc.Button("Advanced Options", id="advanced-options-button", n_clicks=0, color="secondary", className="mb-3"),
                     width="auto"
                 )
+            ]),
+            dbc.Row([
+                dbc.Col(
+                    dcc.Loading(html.Div(id="preprocess-loading-signal", style={"display": "none"})),
+                    width="auto"
+                )
             ])
         ], id="preprocess-panel"
     )

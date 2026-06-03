@@ -1,10 +1,13 @@
 import os
 import uuid
+import logging
 
 from dash import Input, Output, html, no_update
 import dash_uploader as du
 
 from viral_platform.io.loaders import load_file_from_path
+
+logger = logging.getLogger(__name__)
 
 def register_upload_callbacks(app):
     # Callback using dash_uploader's built-in callback decorator to process uploaded files
@@ -18,15 +21,17 @@ def register_upload_callbacks(app):
     )
     def process_uploaded_file(file_paths):
         if not file_paths:
+            logger.info("Upload callback triggered with no files.")
             return html.P("No file uploaded yet."), no_update
 
         file_path = file_paths[0]
         filename = os.path.basename(file_path)
-        print(f"Chunked upload completed: {file_path}")
+        logger.info("Chunked upload completed: %s", file_path)
 
         try:
             adata = load_file_from_path(file_path)
         except Exception as exc:
+            logger.exception("Failed to process uploaded file: %s", filename)
             return (
                 html.Div([
                     html.H5(f"Uploaded file: {filename}"),
@@ -34,6 +39,13 @@ def register_upload_callbacks(app):
                 ]),
                 no_update,
             )
+
+        logger.info(
+            "Successfully processed uploaded file %s (%s cells, %s genes).",
+            filename,
+            adata.n_obs,
+            adata.n_vars,
+        )
 
         return (
             html.Div([
@@ -54,4 +66,5 @@ def register_upload_callbacks(app):
         if not _upload_output:
             return "No file uploaded"
 
+        logger.info("Upload status updated in UI.")
         return "File processed. See upload result below."
