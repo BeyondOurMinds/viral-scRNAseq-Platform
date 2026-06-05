@@ -27,6 +27,7 @@ def create_preprocess_cluster_panel():
                     dcc.Loading(html.Div(id="preprocess-loading-signal", style={"display": "none"})),
                     width="auto"
                 )
-            ])
+            ]),
+            html.Div(id="preprocess-temp-container", children="Upload a dataset to run preprocessing.")
         ], id="preprocess-panel"
     )
