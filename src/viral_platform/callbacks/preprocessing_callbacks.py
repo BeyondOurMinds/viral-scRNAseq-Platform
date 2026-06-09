@@ -1,7 +1,8 @@
-from dash import Input, Output, no_update
+from dash import Input, Output, State, no_update
 from viral_platform.state.dataset_store import get_working_dataset
-from viral_platform.analysis.preprocessing import preprocess_data
+from viral_platform.analysis.preprocessing import preprocess_data, run_clustering
 from viral_platform.plotting.elbow_plot import create_elbow_plot
+from viral_platform.plotting.clustering import create_umap_plot
 import plotly.express as px
 import plotly.graph_objects as go
 import logging
@@ -14,18 +15,22 @@ def register_preprocessing_callbacks(app):
     @app.callback(
         Output("preprocess-loading-signal", "children"),
         Output("preprocess-temp-container", "children"),
-        Input("run-preprocess-button", "n_clicks")
+        Input("run-preprocess-button", "n_clicks"),
+        prevent_initial_call=True,
     )
     def run_preprocessing(n_clicks):
-        if n_clicks is None:
+        if not n_clicks:
             return no_update, no_update
         try:
             preprocess_data()
             adata = get_working_dataset()
             if adata is None:
+                logger.warning("Preprocessing completed but no dataset found in state store.")
                 return "Preprocessing completed, but no dataset found.", no_update
+            logger.info("Preprocessing completed successfully.")
             return "Preprocessing completed successfully.", create_elbow_plot(adata)
         except Exception as exc:
+            logger.exception("Preprocessing failed: %s", str(exc))
             return f"Preprocessing failed: {str(exc)}", no_update
         
     @app.callback(
@@ -51,3 +56,22 @@ def register_preprocessing_callbacks(app):
         except Exception as exc:
             logger.exception("Failed to update elbow plot: %s", str(exc))
             return px.bar(title="Elbow Plot")
+    
+    @app.callback(
+        Output("clustering-loading", "children"),
+        Output("selected-pcs-output", "children"),
+        Input("select-pcs-button", "n_clicks"),
+        State("pc-slider", "value"),
+        prevent_initial_call=True,
+    )
+    def apply_pca_selection(n_clicks, n_pcs):
+        if not n_clicks or n_pcs is None:
+            return no_update, no_update
+        try:
+            logger.info("Apply PCA selection clicked. n_clicks=%s, n_pcs=%s", n_clicks, n_pcs)
+            run_clustering(n_dims=n_pcs)
+            logger.info("PCA selection applied successfully with %d PCs.", n_pcs)
+            return f"PCA selection applied with {n_pcs} PCs.", create_umap_plot()
+        except Exception as exc:
+            logger.exception("Failed to apply PCA selection: %s", str(exc))
+            return f"Failed to apply PCA selection: {str(exc)}", no_update
