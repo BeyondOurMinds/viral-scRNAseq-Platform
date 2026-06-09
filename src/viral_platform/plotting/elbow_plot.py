@@ -34,7 +34,9 @@ def create_elbow_plot(adata=None):
                 step=1,
                 value=10,
                 marks={i: f"PC{i}" for i in range(1, len(explained_variance_ratio)+1)},
-            )
+            ),
+            html.Button("Apply PCA Selection", id="select-pcs-button", n_clicks=0, style={"marginTop": "20px"}),
+            html.Div(id="selected-pcs-output", style={"marginTop": "10px", "fontWeight": "bold"}, children="Select PCs to begin clustering analysis.")
         ])
     except Exception as exc:
         raise RuntimeError("Failed to create elbow plot: " + str(exc)) from exc
