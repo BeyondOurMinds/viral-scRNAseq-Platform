@@ -47,10 +47,18 @@ def register_upload_callbacks(app):
             adata.n_vars,
         )
 
+        sample_count = adata.uns.get("sample_count")
+        dataset_message = f"Loaded dataset with {adata.n_obs} cells and {adata.n_vars} genes."
+        if sample_count:
+            dataset_message = (
+                f"Loaded dataset with {adata.n_obs} cells and {adata.n_vars} genes "
+                f"from {sample_count} sample(s)."
+            )
+
         return (
             html.Div([
                 html.H5(f"Uploaded file: {filename}"),
-                html.P(f"Loaded h5ad file with {adata.n_obs} cells and {adata.n_vars} genes."),
+                html.P(dataset_message),
             ]),
             str(uuid.uuid4()),
         )

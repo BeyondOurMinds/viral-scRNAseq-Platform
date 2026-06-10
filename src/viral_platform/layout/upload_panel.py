@@ -22,9 +22,9 @@ def create_upload_panel():
                         id="file-uploader",
                         text="Drag and Drop or Select File",
                         text_completed="Uploaded: ",
-                        max_file_size=4096, # 4GB limit for files
+                        max_file_size=65536, # 64GB limit for files
                         chunk_size=5, # 5MB chunk size for uploads
-                        filetypes=["h5ad"],
+                        filetypes=["h5ad", "zip"], # Allowed file types
                         default_style={
                             "width": "98%",
                             "minHeight": "60px",
