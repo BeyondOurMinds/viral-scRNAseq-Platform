@@ -4,6 +4,7 @@ from .sidebar import collapsible_sidebar, toggle_sidebar
 from .upload_panel import create_upload_panel
 from .QC_panel import create_qc_panel
 from .PreprocessCluster_panel import create_preprocess_cluster_panel
+from .InfectionAnalysis_panel import create_infection_analysis_panel
 
 def create_layout():
     return html.Div(
@@ -20,5 +21,6 @@ def create_layout():
         create_upload_panel(),
         create_qc_panel(),
         create_preprocess_cluster_panel(),
+        create_infection_analysis_panel(),
     ]
     )

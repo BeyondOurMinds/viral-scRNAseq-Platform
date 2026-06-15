@@ -47,6 +47,45 @@ def _postprocess_loaded_adata(adata, sample_count=None):
     adata.var["mt"] = adata.var_names.str.upper().str.startswith("MT-") # Annotate mitochondrial genes
     sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
     set_working_dataset(adata)
+
+    # Temporary
+    '''print(adata)
+    print(f"Cells: {adata.n_obs:,}")
+    print(f"Genes: {adata.n_vars:,}")
+
+    print(adata.obs.columns.tolist())
+    print(adata.var.columns.tolist())
+
+    print(adata.var_names[:20])
+    print(adata.var_names[-20:])
+
+    viral_features = [
+    g for g in adata.var_names
+    if g.lower().startswith("scv2")
+    ]
+
+    print(viral_features)
+    print(len(viral_features))
+
+    import numpy as np
+
+    viral_counts = np.asarray(
+        adata[:, viral_features].X.sum(axis=1)
+    ).flatten()
+
+    print(pd.Series(viral_counts).describe())
+
+    print(
+        adata.var_names[
+            adata.var_names.str.contains(
+                "scv2",
+                case=False,
+                regex=False
+            )
+        ]
+    )'''
+
+    # end temporary
     return adata
 
 

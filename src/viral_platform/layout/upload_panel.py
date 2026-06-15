@@ -24,7 +24,7 @@ def create_upload_panel():
                         text_completed="Uploaded: ",
                         max_file_size=65536, # 64GB limit for files
                         chunk_size=5, # 5MB chunk size for uploads
-                        filetypes=["h5ad", "zip"], # Allowed file types
+                        filetypes=["h5ad", "zip", "h5"], # Allowed file types
                         default_style={
                             "width": "98%",
                             "minHeight": "60px",
