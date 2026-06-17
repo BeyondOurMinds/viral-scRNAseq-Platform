@@ -45,10 +45,14 @@ def _postprocess_loaded_adata(adata, sample_count=None):
         adata.uns["sample_count"] = int(sample_count)
 
     adata.var["mt"] = adata.var_names.str.upper().str.startswith("MT-") # Annotate mitochondrial genes
+    adata.var["mt"] = (
+        adata.var["mt"].fillna(False).astype(bool)
+    )
     sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
     set_working_dataset(adata)
 
     # Temporary
+    print(adata.obs.columns)
     '''print(adata)
     print(f"Cells: {adata.n_obs:,}")
     print(f"Genes: {adata.n_vars:,}")
