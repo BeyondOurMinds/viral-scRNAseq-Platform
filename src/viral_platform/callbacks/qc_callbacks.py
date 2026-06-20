@@ -4,7 +4,7 @@ from dash import Input, Output, State, html, no_update
 import plotly.express as px
 
 from viral_platform.plotting.QC_plots import create_qc_plots
-from viral_platform.state.dataset_store import get_working_dataset, set_working_dataset
+from viral_platform.state.dataset_store import get_state_store, get_working_dataset, set_working_dataset, update_state_store
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +34,19 @@ def register_qc_callbacks(app):
     )
     def update_ncount_violin(min_counts):
         adata = get_working_dataset()
+        state = get_state_store()
         if adata is None:
             logger.warning("nCount violin update requested without dataset.")
             return px.violin(title="nCount_RNA")
 
         if not min_counts or len(min_counts) != 2:
-            min_counts = [adata.obs["nCount_RNA"].min(), adata.obs["nCount_RNA"].max()]
+            stored = state.get("nCount_RNA", {})
+            stored_min = stored.get("min")
+            stored_max = stored.get("max")
+            if stored_min is not None and stored_max is not None:
+                min_counts = [stored_min, stored_max]
+            else:
+                min_counts = [adata.obs["nCount_RNA"].min(), adata.obs["nCount_RNA"].max()]
         
         try:
             ncount_fig = px.violin(
@@ -64,12 +71,19 @@ def register_qc_callbacks(app):
     )
     def update_nfeature_violin(min_features):
         adata = get_working_dataset()
+        state = get_state_store()
         if adata is None:
             logger.warning("nFeature violin update requested without dataset.")
             return px.violin(title="nFeature_RNA")
 
         if not min_features or len(min_features) != 2:
-            min_features = [adata.obs["nFeature_RNA"].min(), adata.obs["nFeature_RNA"].max()]
+            stored = state.get("nFeature_RNA", {})
+            stored_min = stored.get("min")
+            stored_max = stored.get("max")
+            if stored_min is not None and stored_max is not None:
+                min_features = [stored_min, stored_max]
+            else:
+                min_features = [adata.obs["nFeature_RNA"].min(), adata.obs["nFeature_RNA"].max()]
         
         try:
             nfeature_fig = px.violin(
@@ -94,13 +108,16 @@ def register_qc_callbacks(app):
     )
     def update_percent_mt_violin(max_percent_mt):
         adata = get_working_dataset()
+        state = get_state_store()
 
         if adata is None:
             logger.warning("percent.mt violin update requested without dataset.")
             return px.violin(title="Percent Mitochondrial Genes")
 
         if max_percent_mt is None:
-            max_percent_mt = adata.obs["percent.mt"].max()
+            max_percent_mt = state.get("percent_mt")
+            if max_percent_mt is None:
+                max_percent_mt = adata.obs["percent.mt"].max()
         
         try:
             percent_mt_fig = px.violin(
@@ -149,6 +166,11 @@ def register_qc_callbacks(app):
             adata = adata[adata.obs["percent.mt"] <= max_percent_mt]
 
             set_working_dataset(adata)
+            update_state_store(
+                nCount_RNA={"min": float(min_counts[0]), "max": float(min_counts[1])},
+                nFeature_RNA={"min": float(min_features[0]), "max": float(min_features[1])},
+                percent_mt=float(max_percent_mt),
+            )
             logger.info(
                 "Applied QC filters: nCount=%s, nFeature=%s, max_percent_mt=%s. Remaining cells: %s",
                 min_counts,

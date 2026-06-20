@@ -21,7 +21,7 @@ def collapsible_sidebar():
             html.A("Upload Data", href="#upload-panel", style={"display": "block", "margin": "10px 0", "borderRadius": "3px", "padding": "5px", "backgroundColor": "#007bff", "color": "white", "textDecoration": "none"}),
             html.A("Quality Control", href="#qc-panel", style={"display": "block", "margin": "10px 0", "borderRadius": "3px", "padding": "5px", "backgroundColor": "#007bff", "color": "white", "textDecoration": "none"}),
             html.A("Preprocessing", href="#preprocess-panel", style={"display": "block", "margin": "10px 0", "borderRadius": "3px", "padding": "5px", "backgroundColor": "#007bff", "color": "white", "textDecoration": "none"}),
-            html.A("Infection Analysis", href="#infection-analysis-panel", style={"display": "block", "margin": "10px 0", "borderRadius": "3px", "padding": "5px", "backgroundColor": "#007bff", "color": "white", "textDecoration": "none"}),
+            html.A("Differential Expression", href="#differential-expression-panel", style={"display": "block", "margin": "10px 0", "borderRadius": "3px", "padding": "5px", "backgroundColor": "#007bff", "color": "white", "textDecoration": "none"}),
             html.Button("Option 5"),
             html.Button("Option 6"),
         ],

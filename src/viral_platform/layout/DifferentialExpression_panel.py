@@ -14,6 +14,44 @@ def create_differential_expression_panel():
             html.H2("Differential Expression Analysis"),
             dbc.Row([
                 dbc.Col(
+                    dbc.Select(
+                        id="grouping-variable-dropdown",
+                        options=[
+                            {"label": "Upload a dataset to select grouping variable", "value": ""},
+                        ],
+                        placeholder="Select Grouping Variable"
+                    )
+                ),
+                dbc.Col(
+                    dbc.Select(
+                        id="group1-dropdown",
+                        options=[
+                            {"label": "Upload a dataset to select group 1", "value": ""},
+                        ],
+                        placeholder="Select Group 1"
+                    )
+                ),
+                dbc.Col(
+                    dbc.Select(
+                        id="group2-dropdown",
+                        options=[
+                            {"label": "Upload a dataset to select group 2", "value": ""},
+                        ],
+                        placeholder="Select Group 2"
+                    )
+                ),
+                dbc.Col(
+                    dbc.Select(
+                        id="celltype-dropdown",
+                        options=[
+                            {"label": "Upload a dataset to select cell type", "value": ""},
+                        ],
+                        placeholder="Select Cell Type"
+                    )
+                ),
+            ]),
+            dbc.Row([
+                dbc.Col(
                     dbc.Button("Run Differential Expression Analysis", id="run-differential-expression-analysis-button", n_clicks=0, color="primary", className="mb-3"),
                     width="auto"
                 ),
@@ -21,7 +59,7 @@ def create_differential_expression_panel():
                     dbc.Button("Advanced Options", id="differential-expression-advanced-options-button", n_clicks=0, color="secondary", className="mb-3"),
                     width="auto"
                 )
-            ]),
+            ], style={"marginTop": "8px"}),
             dbc.Row([
                 dbc.Col(
                     dcc.Loading(html.Div(id="differential-expression-loading-signal", style={"display": "none"})),

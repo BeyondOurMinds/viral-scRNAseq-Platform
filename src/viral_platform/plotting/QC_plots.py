@@ -1,5 +1,6 @@
 import plotly.express as px
 from dash import dcc, html
+from viral_platform.state.dataset_store import sync_state_with_dataset
 
 def create_qc_plots(adata):
     if adata is None:
@@ -13,6 +14,7 @@ def create_qc_plots(adata):
     adata.obs["nCount_RNA"] = adata.obs["total_counts"]
     adata.obs["nFeature_RNA"] = adata.obs["n_genes_by_counts"]
     adata.obs["percent.mt"] = adata.obs["pct_counts_mt"]
+    sync_state_with_dataset(adata)
 
     ncount_fig = px.violin(
         adata.obs,
