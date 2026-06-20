@@ -6,6 +6,12 @@ _DEFAULT_HISTORY = {
     "nCount_RNA": {"min": None, "max": None},
     "percent_mt": None,
     "has_cols": [],
+    "metadata_info": {
+        "groupable_columns": [],
+        "cell_type_columns": [],
+        "condition_columns": [],
+        "sample_columns": [],
+    },
 }
 
 
@@ -19,6 +25,12 @@ def _new_history_state():
         "nCount_RNA": {"min": None, "max": None},
         "percent_mt": None,
         "has_cols": [],
+        "metadata_info": {
+            "groupable_columns": [],
+            "cell_type_columns": [],
+            "condition_columns": [],
+            "sample_columns": [],
+        },
     }
 
 
@@ -112,3 +124,9 @@ def clear_working_dataset():
     history["nCount_RNA"] = {"min": None, "max": None}
     history["percent_mt"] = None
     history["has_cols"] = []
+    history["metadata_info"] = {
+        "groupable_columns": [],
+        "cell_type_columns": [],
+        "condition_columns": [],
+        "sample_columns": [],
+    }
