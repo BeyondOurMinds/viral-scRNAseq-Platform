@@ -14,39 +14,43 @@ def create_differential_expression_panel():
             html.H2("Differential Expression Analysis"),
             dbc.Row([
                 dbc.Col(
-                    dbc.Select(
+                    dcc.Dropdown(
                         id="grouping-variable-dropdown",
                         options=[
                             {"label": "Upload a dataset to select grouping variable", "value": ""},
                         ],
-                        placeholder="Select Grouping Variable"
+                        placeholder="Select Grouping Variable",
+                        searchable=True,
                     )
                 ),
                 dbc.Col(
-                    dbc.Select(
+                    dcc.Dropdown(
                         id="group1-dropdown",
                         options=[
-                            {"label": "Upload a dataset to select group 1", "value": ""},
+                            {"label": "Select a grouping variable to select group 1", "value": ""},
                         ],
-                        placeholder="Select Group 1"
+                        placeholder="Select Group 1",
+                        searchable=True,
                     )
                 ),
                 dbc.Col(
-                    dbc.Select(
+                    dcc.Dropdown(
                         id="group2-dropdown",
                         options=[
-                            {"label": "Upload a dataset to select group 2", "value": ""},
+                            {"label": "Select a grouping variable to select group 2", "value": ""},
                         ],
-                        placeholder="Select Group 2"
+                        placeholder="Select Group 2",
+                        searchable=True,
                     )
                 ),
                 dbc.Col(
-                    dbc.Select(
+                    dcc.Dropdown(
                         id="celltype-dropdown",
                         options=[
                             {"label": "Upload a dataset to select cell type", "value": ""},
                         ],
-                        placeholder="Select Cell Type"
+                        placeholder="Select Cell Type",
+                        searchable=True,
                     )
                 ),
             ]),

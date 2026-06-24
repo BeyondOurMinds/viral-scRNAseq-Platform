@@ -8,7 +8,8 @@ import anndata as ad
 import pandas as pd
 import scanpy as sc
 
-from viral_platform.state.dataset_store import set_dataset, set_working_dataset
+from viral_platform.state.dataset_store import set_dataset, set_working_dataset, get_state_store
+from viral_platform.analysis.metadata import discover_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ def _postprocess_loaded_adata(adata, sample_count=None):
     set_working_dataset(adata)
 
     # Temporary
-    print(adata.obs.columns)
+    # print(adata.obs.columns)
     '''print(adata)
     print(f"Cells: {adata.n_obs:,}")
     print(f"Genes: {adata.n_vars:,}")
@@ -90,6 +91,9 @@ def _postprocess_loaded_adata(adata, sample_count=None):
     )'''
 
     # end temporary
+    discover_metadata(adata)
+    #history = get_state_store()
+    #print("Metadata info after discovery:", history.get("metadata_info", {}))
     return adata
 
 

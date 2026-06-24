@@ -9,7 +9,7 @@ _DEFAULT_HISTORY = {
     "metadata_info": {
         "groupable_columns": [],
         "cell_type_columns": [],
-        "condition_columns": [],
+        "cell_types": [],
         "sample_columns": [],
     },
 }
@@ -28,7 +28,7 @@ def _new_history_state():
         "metadata_info": {
             "groupable_columns": [],
             "cell_type_columns": [],
-            "condition_columns": [],
+            "cell_types": [],
             "sample_columns": [],
         },
     }
@@ -117,7 +117,7 @@ def get_working_dataset():
 
 
 def clear_working_dataset():
-    """Clear the working dataset and reset QC-related derived state values."""
+    """Clear the working dataset and reset derived state values."""
     history["working"] = None
     history["metadata"] = False
     history["nFeature_RNA"] = {"min": None, "max": None}
@@ -127,6 +127,6 @@ def clear_working_dataset():
     history["metadata_info"] = {
         "groupable_columns": [],
         "cell_type_columns": [],
-        "condition_columns": [],
+        "cell_types": [],
         "sample_columns": [],
     }
