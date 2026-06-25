@@ -8,7 +8,7 @@ import anndata as ad
 import pandas as pd
 import scanpy as sc
 
-from viral_platform.state.dataset_store import set_dataset, set_working_dataset, get_state_store
+from viral_platform.state.dataset_store import set_dataset, set_working_dataset
 from viral_platform.analysis.metadata import discover_metadata
 
 logger = logging.getLogger(__name__)
@@ -54,41 +54,18 @@ def _postprocess_loaded_adata(adata, sample_count=None):
 
     # Temporary
     # print(adata.obs.columns)
-    '''print(adata)
-    print(f"Cells: {adata.n_obs:,}")
-    print(f"Genes: {adata.n_vars:,}")
-
-    print(adata.obs.columns.tolist())
-    print(adata.var.columns.tolist())
-
-    print(adata.var_names[:20])
-    print(adata.var_names[-20:])
-
-    viral_features = [
-    g for g in adata.var_names
-    if g.lower().startswith("scv2")
-    ]
-
-    print(viral_features)
-    print(len(viral_features))
-
     import numpy as np
 
-    viral_counts = np.asarray(
-        adata[:, viral_features].X.sum(axis=1)
-    ).flatten()
+    X = adata.raw.X
 
-    print(pd.Series(viral_counts).describe())
+    if hasattr(X, "data"):  # sparse matrix
+        values = X.data
+    else:
+        values = X.ravel()
 
-    print(
-        adata.var_names[
-            adata.var_names.str.contains(
-                "scv2",
-                case=False,
-                regex=False
-            )
-        ]
-    )'''
+    print("Min:", values.min())
+    print("Max:", values.max())
+    print("Non-integer values:", np.sum(values != np.floor(values)))
 
     # end temporary
     discover_metadata(adata)

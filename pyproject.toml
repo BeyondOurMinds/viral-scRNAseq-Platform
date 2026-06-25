@@ -8,7 +8,8 @@ dependencies=[
     "dash>=4,<5",
     "scanpy[leiden]>=1.11.0",
     "dash-bootstrap-components>=2.0.0",
-    "dash-uploader>=0.6.1"
+    "dash-uploader>=0.6.1",
+    "decoupler>=2.0.0"
 ]
 readme = "README.md"
 authors = [

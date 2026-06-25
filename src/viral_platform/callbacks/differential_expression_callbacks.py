@@ -1,8 +1,9 @@
 import logging
 
-from dash import Input, Output
+from dash import Input, Output, State
 
 from viral_platform.state.dataset_store import get_state_store, get_working_dataset
+from viral_platform.analysis.pseudobulk import subset_cells, find_biological_replicates, create_pseudobulk
 
 logger = logging.getLogger(__name__)
 
@@ -104,3 +105,39 @@ def register_differential_expression_callbacks(app):
             len(options),
         )
         return options, group1_value, options, group2_value
+    
+    @app.callback(
+        Output("differential-expression-loading-signal", "children"),
+        Input("run-differential-expression-analysis-button", "n_clicks"),
+        State("grouping-variable-dropdown", "value"),
+        State("group1-dropdown", "value"),
+        State("group2-dropdown", "value"),
+        State("celltype-dropdown", "value"),
+    )
+    def run_DE_analysis(n_clicks, grouping, group1, group2, celltype):
+        """Run differential expression analysis when the button is clicked."""
+        if n_clicks == 0:
+            return ""
+        
+        adata = subset_cells(grouping, group1, group2, celltype)
+        if adata is None:
+            logger.warning("Differential expression analysis requested without an active dataset.")
+            return "No active dataset available for differential expression analysis."
+        if not find_biological_replicates(adata, grouping):
+            return "Insufficient biological replicates for differential expression analysis."
+        adata = create_pseudobulk(adata, grouping)
+        if adata is None:
+            return "Failed to create pseudobulk dataset for differential expression analysis."
+        # Here you would implement the actual DE analysis logic
+        logger.info(
+            "Running differential expression analysis for grouping '%s', comparing '%s' vs '%s', filtered by cell type '%s'.",
+            grouping,
+            group1,
+            group2,
+            celltype,
+        )
+        
+        # Placeholder for DE analysis result
+        de_results = "Differential expression analysis completed successfully."
+        
+        return de_results
