@@ -70,6 +70,38 @@ def create_differential_expression_panel():
                     width="auto"
                 )
             ]),
-            html.Div(id="differential-expression-temp-container", children="Upload a dataset to run differential expression analysis.")
+            dbc.Tabs(
+                id="differential-expression-output-tabs",
+                active_tab="pseudobulk-tab",
+                children=[
+                    dbc.Tab(
+                        label="Pseudobulk",
+                        tab_id="pseudobulk-tab",
+                        children=html.Div(
+                            id="pseudobulk-container",
+                            children="Upload a dataset to run differential expression analysis.",
+                            style={"padding": "15px"},
+                        ),
+                    ),
+                    dbc.Tab(
+                        label="DE Table",
+                        tab_id="de-table-tab",
+                        children=html.Div(
+                            id="de-table-container",
+                            children="DE table output will appear here.",
+                            style={"padding": "15px"},
+                        ),
+                    ),
+                    dbc.Tab(
+                        label="Volcano Plot",
+                        tab_id="volcano-plot-tab",
+                        children=html.Div(
+                            id="volcano-plot-container",
+                            children="Volcano plot output will appear here.",
+                            style={"padding": "15px"},
+                        ),
+                    ),
+                ],
+            )
         ], id="differential-expression-panel"
     )

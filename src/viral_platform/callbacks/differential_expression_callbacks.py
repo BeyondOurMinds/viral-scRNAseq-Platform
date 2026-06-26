@@ -1,8 +1,9 @@
 import logging
 
-from dash import Input, Output, State
+from dash import Input, Output, State, html, no_update
+import dash_bootstrap_components as dbc
 
-from viral_platform.state.dataset_store import get_state_store, get_working_dataset
+from viral_platform.state.dataset_store import get_state_store, get_working_dataset, reset_state_store
 from viral_platform.analysis.pseudobulk import subset_cells, find_biological_replicates, create_pseudobulk
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,11 @@ def register_differential_expression_callbacks(app):
     )
     def populate_metadata_driven_dropdowns(_dataset_version):
         """Populate grouping-variable and celltype dropdowns from history metadata_info."""
+        if _dataset_version is None:
+            # Browser was refreshed or is a new session with no upload — clear any
+            # stale server-side state left over from a previous upload in this process.
+            reset_state_store()
+
         state = get_state_store()
         metadata_info = state.get("metadata_info", {})
 
@@ -108,6 +114,7 @@ def register_differential_expression_callbacks(app):
     
     @app.callback(
         Output("differential-expression-loading-signal", "children"),
+        Output("pseudobulk-container", "children"),
         Input("run-differential-expression-analysis-button", "n_clicks"),
         State("grouping-variable-dropdown", "value"),
         State("group1-dropdown", "value"),
@@ -117,17 +124,37 @@ def register_differential_expression_callbacks(app):
     def run_DE_analysis(n_clicks, grouping, group1, group2, celltype):
         """Run differential expression analysis when the button is clicked."""
         if n_clicks == 0:
-            return ""
+            return "", "Upload a dataset to run differential expression analysis."
         
-        adata = subset_cells(grouping, group1, group2, celltype)
-        if adata is None:
-            logger.warning("Differential expression analysis requested without an active dataset.")
-            return "No active dataset available for differential expression analysis."
-        if not find_biological_replicates(adata, grouping):
-            return "Insufficient biological replicates for differential expression analysis."
-        adata = create_pseudobulk(adata, grouping)
-        if adata is None:
-            return "Failed to create pseudobulk dataset for differential expression analysis."
+        if celltype != "All Cells":
+            adata = subset_cells(grouping, group1, group2, celltype)
+            if adata is None:
+                logger.warning("Differential expression analysis requested without an active dataset.")
+                return "No active dataset available for differential expression analysis.", ""
+            if not find_biological_replicates(adata, grouping):
+                return "Insufficient biological replicates for differential expression analysis.", ""
+            adata = create_pseudobulk(adata)
+            if adata is None:
+                return "Failed to create pseudobulk dataset for differential expression analysis.", ""
+            "DE analysis logic for the selected cell type here"
+        else:
+            state = get_state_store()
+            metadata_info = state.get("metadata_info", {})
+            celltypes = [
+                ct for ct in metadata_info.get("cell_types", [])
+                if str(ct).strip().lower() != "all cells"
+            ]
+            for ct in celltypes:
+                adata = subset_cells(grouping, group1, group2, ct)
+                if adata is None:
+                    logger.warning("Differential expression analysis requested without an active dataset.")
+                    return "No active dataset available for differential expression analysis.", ""
+                if not find_biological_replicates(adata, grouping):
+                    return f"Insufficient biological replicates for cell type '{ct}' in differential expression analysis.", ""
+                adata = create_pseudobulk(adata)
+                if adata is None:
+                    return f"Failed to create pseudobulk dataset for cell type '{ct}' in differential expression analysis.", ""
+                "DE analysis logic for all cells types here"
         # Here you would implement the actual DE analysis logic
         logger.info(
             "Running differential expression analysis for grouping '%s', comparing '%s' vs '%s', filtered by cell type '%s'.",
@@ -137,7 +164,23 @@ def register_differential_expression_callbacks(app):
             celltype,
         )
         
-        # Placeholder for DE analysis result
         de_results = "Differential expression analysis completed successfully."
+        pseudobulk_summary = dbc.Table(
+            [
+                html.Tbody([
+                    html.Tr([html.Td("Grouping Variable"), html.Td(grouping)]),
+                    html.Tr([html.Td("Group 1"), html.Td(group1)]),
+                    html.Tr([html.Td("Group 2"), html.Td(group2)]),
+                    html.Tr([html.Td("Cell Type Filter"), html.Td(celltype)]),
+                    html.Tr([html.Td("Biological Samples"), html.Td(adata.n_obs)]),
+                    html.Tr([html.Td("Samples (Group 1)"), html.Td(adata.obs[adata.obs[grouping] == group1]["sampleID"].nunique())]),
+                    html.Tr([html.Td("Samples (Group 2)"), html.Td(adata.obs[adata.obs[grouping] == group2]["sampleID"].nunique())]),
+                    html.Tr([html.Td("Median Cells / Sample"), html.Td(int(adata.obs["psbulk_cells"].median()))]),
+                    html.Tr([html.Td("Median Counts / Sample"), html.Td(int(adata.obs["psbulk_counts"].median()))]),
+                    html.Tr([html.Td("Minimum Cells / Sample"), html.Td(int(adata.obs["psbulk_cells"].min()))]),
+                    html.Tr([html.Td("Minimum Counts / Sample"), html.Td(int(adata.obs["psbulk_counts"].min()))]),
+                ])
+            ]
+        )
         
-        return de_results
+        return de_results, pseudobulk_summary

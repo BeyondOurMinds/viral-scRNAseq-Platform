@@ -31,11 +31,11 @@ def subset_cells(grouping, group1, group2, celltype="All Cells"):
     
     # Filter by grouping variable and groups
     if grouping and group1 and group2:
-        adata = adata[adata.obs[grouping].isin([group1, group2])]
+        adata = adata[adata.obs[grouping].isin([group1, group2])].copy()
     
     # Filter by cell type if provided
     if celltype and celltype != "All Cells":
-        adata = adata[adata.obs['cell_type'] == celltype]
+        adata = adata[adata.obs['cell_type'] == celltype].copy()
     
     print(adata)
     print(adata.obs[grouping].value_counts())
@@ -73,7 +73,7 @@ def find_biological_replicates(adata, grouping):
     
     return continue_analysis
 
-def create_pseudobulk(adata, grouping, sample_column="sampleID"):
+def create_pseudobulk(adata, grouping=None, sample_column="sampleID"):
     """
     Create a pseudobulk dataset from the given AnnData object based on the specified grouping variable and sample column.
 
@@ -85,22 +85,36 @@ def create_pseudobulk(adata, grouping, sample_column="sampleID"):
     Returns:
     - A new AnnData object representing the pseudobulk dataset.
     """
-    if adata is None or grouping not in adata.obs.columns or sample_column not in adata.obs.columns:
+    if adata is None or sample_column not in adata.obs.columns:
         logger.warning("Invalid dataset or grouping/sample columns for creating pseudobulk.")
         return None
     
     adata = check_adata_type(adata)
-    padata = dc.pp.pseudobulk(adata, sample_col=sample_column, groups_col=grouping)
+
+    # possibly temp
+    adata = adata.copy()
+
+    adata.obs[sample_column] = adata.obs[sample_column].astype(str)
+    if grouping is not None and grouping in adata.obs.columns:
+        adata.obs[grouping] = adata.obs[grouping].astype(str)
+
+    #print("decoupler version:", dc.__version__)
+    #print("adata x shape:",adata.X.shape)
+    #print("adata obs shape:",adata.obs.shape)
+    # end possible temp code
+
+    padata = dc.pp.pseudobulk(adata, sample_col=sample_column, groups_col=grouping, empty=True)
 
     logger.info("Pseudobulk dataset created with %d groups based on '%s' and '%s'.", padata.n_obs, grouping, sample_column)
-    #print(padata)
-    #print(padata.obs.head())
-    #print(padata.obs["sampleID"].nunique())
-    #print(padata.obs.groupby("CoVID-19 severity").size())
+
+    
+    
     return padata
 
 def check_adata_type(adata):
     if adata.X.dtype == 'float32':
+        #print("Adata shape:", adata.shape)
+        #print("Adata raw shape:", adata.raw.shape)
         adata_pb = AnnData(
             X=adata.raw.X.copy(),
             obs=adata.obs.copy(),
