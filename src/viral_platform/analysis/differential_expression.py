@@ -1,5 +1,4 @@
-from viral_platform.state.dataset_store import get_dataset
-from viral_platform.analysis.pseudobulk import create_pseudobulk, find_biological_replicates, subset_cells
+from viral_platform.analysis.pseudobulk import create_pseudobulk, find_biological_replicates
 from pydeseq2.dds import DeseqDataSet
 from pydeseq2.ds import DeseqStats
 import pandas as pd

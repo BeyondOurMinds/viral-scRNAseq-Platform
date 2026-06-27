@@ -7,7 +7,7 @@ from dash import Input, Output, State, html, no_update, dash_table, dcc
 import dash_bootstrap_components as dbc
 
 from viral_platform.state.dataset_store import get_state_store, get_working_dataset, reset_state_store
-from viral_platform.analysis.pseudobulk import subset_cells, find_biological_replicates, create_pseudobulk
+from viral_platform.analysis.pseudobulk import subset_cells
 from viral_platform.analysis.differential_expression import run_differential_expression
 
 logger = logging.getLogger(__name__)
