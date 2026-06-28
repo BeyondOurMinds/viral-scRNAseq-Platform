@@ -24,14 +24,16 @@ def discover_metadata(adata):
     for col in adata.obs.columns:
         if adata.obs[col].dtype.name == 'category' or adata.obs[col].dtype.name == 'object':
             metadata_info_new["groupable_columns"].append(col)
+    print(adata.obs.columns)
     
-    if "cell_type" in adata.obs.columns:
-        metadata_info_new["cell_types"].extend(adata.obs["cell_type"].cat.categories.tolist())
+    # if "cell_type" in adata.obs.columns.lower() or "celltype" in adata.obs.columns.lower():
+    #     metadata_info_new["cell_types"].extend(adata.obs["cell_type"].cat.categories.tolist())
 
     # Identify specific types of metadata based on naming conventions
     for col in metadata_info_new["groupable_columns"]:
-        if "cell_type" in col.lower() or "celltype" in col.lower() or "majortype" in col.lower() or "cellannotation" in col.lower():
+        if "cell_type" in col.lower() or "celltype" in col.lower():
             metadata_info_new["cell_type_columns"].append(col)
+            metadata_info_new["cell_types"].extend(adata.obs[col].cat.categories.tolist())
             '''if "cell_type" in col.lower():
                 cell_type_list.append(adata.obs[col].cat.categories.tolist())
             elif "celltype" in col.lower():

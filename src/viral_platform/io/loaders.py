@@ -17,8 +17,11 @@ logger = logging.getLogger(__name__)
 # ────── 10x zip loading ─────────────────────────────────────────────────────────────
 # ────────────────────────────────────────────────────────────────────────────────────
 
-# Matches any matrix.mtx or matrix.mtx.gz file, capturing any prefix before "matrix".
-MATRIX_FILENAME_PATTERN = re.compile(r"^(?P<prefix>.+)matrix\.mtx(?:\.gz)?$", re.IGNORECASE)
+# Matches GEO-style prefixed count matrices, capturing any prefix before the 10x matrix suffix.
+PREFIXED_MATRIX_FILENAME_PATTERN = re.compile(
+    r"^(?P<prefix>.+)(?:matrix|counts)\.mtx(?:\.gz)?$",
+    re.IGNORECASE,
+)
 
 # Each tuple lists acceptable filename variants for one required 10x file type.
 REQUIRED_10X_FILES = (
@@ -29,6 +32,16 @@ REQUIRED_10X_FILES = (
 
 PREFIXED_BARCODES_SUFFIXES = ("barcodes.tsv.gz", "barcodes.tsv")
 PREFIXED_FEATURES_SUFFIXES = ("features.tsv.gz", "features.tsv", "genes.tsv.gz", "genes.tsv")
+
+
+def _write_var_names_to_assets(adata, filename="adata_var_names.txt"):
+    """Write AnnData variable names to the package assets folder, one per line."""
+    assets_dir = Path(__file__).resolve().parent.parent / "assets"
+    assets_dir.mkdir(parents=True, exist_ok=True)
+
+    output_path = assets_dir / filename
+    output_path.write_text("\n".join(map(str, adata.var_names)) + "\n", encoding="utf-8")
+    return output_path
 
 
 # ── Shared post-processing ────────────────────────────────────────────────────
@@ -54,7 +67,7 @@ def _postprocess_loaded_adata(adata, sample_count=None):
 
     # Temporary
     # print(adata.obs.columns)
-    import numpy as np
+    '''import numpy as np
 
     X = adata.raw.X
 
@@ -65,7 +78,58 @@ def _postprocess_loaded_adata(adata, sample_count=None):
 
     print("Min:", values.min())
     print("Max:", values.max())
-    print("Non-integer values:", np.sum(values != np.floor(values)))
+    print("Non-integer values:", np.sum(values != np.floor(values)))'''
+
+    # _write_var_names_to_assets(adata)
+
+    # print("var columns:", adata.var.columns)
+
+    # print("Adata object:", adata)
+    # viral_genes = [
+    #     "BZLF1", "BRLF1", "BMRF1",
+    #     "LMP-1", "LMP-2A", "LMP-2B",
+    #     "BNLF2a", "BNLF2b"
+    # ]
+
+    # for gene in viral_genes:
+    #     print(gene, gene in adata.var_names)
+    
+    # for gene in viral_genes:
+    #     if gene in adata.var_names:
+    #         counts = adata[:, gene].X
+
+    #         if hasattr(counts, "toarray"):
+    #             counts = counts.toarray()
+
+    #         print(
+    #             gene,
+    #             "total counts =", counts.sum(),
+    #             "cells expressing =", (counts > 0).sum()
+    #         )
+
+    # viral_prefixes = (
+    #     "EBNA", "EBER", "LMP",
+    #     "BZ", "BR", "BL", "BM", "BN",
+    #     "BO", "BP", "BQ", "BX", "BV", "BW",
+    #     "Ba", "Bb", "Bc", "Bd"
+    # )
+
+    # viral_genes = [
+    #     g for g in adata.var_names
+    #     if g.startswith(viral_prefixes)
+    # ]
+
+    # print(len(viral_genes))
+    # print(sorted(viral_genes))
+
+    # for gene in adata.var_names:
+    #     if gene.startswith(viral_prefixes):
+    #         counts = adata[:, gene].X
+    #         if hasattr(counts, "toarray"):
+    #             counts = counts.toarray()
+
+    #         if counts.sum() > 0:
+    #             print(gene, counts.sum(), (counts > 0).sum())
 
     # end temporary
     discover_metadata(adata)
@@ -98,8 +162,8 @@ def _safe_extract_zip(zip_path, destination_dir):
 # ── 10x helper utilities ──────────────────────────────────────────────────────
 
 def _extract_prefix(filename):
-    """Return the sample prefix from a *matrix.mtx(.gz) filename, or None."""
-    m = MATRIX_FILENAME_PATTERN.match(filename)
+    """Return the sample prefix from a prefixed *matrix/counts.mtx(.gz) filename, or None."""
+    m = PREFIXED_MATRIX_FILENAME_PATTERN.match(filename)
     return m.group("prefix") if m else None
 
 
@@ -112,7 +176,7 @@ def _find_matching_file(directory, candidates):
 # ── Per-sample prefixed 10x loading ──────────────────────────────────────────
 
 def _load_prefixed_10x_sample(matrix_path):
-    """Load one GEO-style prefixed 10x sample (any *matrix.mtx[.gz]) into AnnData."""
+    """Load one GEO-style prefixed 10x sample (any *matrix/counts.mtx[.gz]) into AnnData."""
     matrix_path = Path(matrix_path)
     prefix = _extract_prefix(matrix_path.name)
     if prefix is None:
@@ -218,6 +282,8 @@ def _find_10x_directory(root_dir):
 def _load_h5ad(path):
     """Read an h5ad file and run shared post-processing."""
     return _postprocess_loaded_adata(sc.read_h5ad(path), sample_count=1)
+
+
 
 
 def _load_10x_zip(path):

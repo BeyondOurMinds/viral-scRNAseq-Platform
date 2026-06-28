@@ -1,4 +1,6 @@
 from dash import dcc, html
+
+from viral_platform.layout.ViralBurden_panel import create_viral_burden_panel
 from .header import create_header
 from .sidebar import collapsible_sidebar, toggle_sidebar
 from .upload_panel import create_upload_panel
@@ -38,6 +40,13 @@ def create_layout():
                     tab_id="DE-tab",
                     children=html.Div([
                         create_differential_expression_panel()
+                    ]),
+                ),
+                dbc.Tab(
+                    label="Viral Burden",
+                    tab_id="VB-tab",
+                    children=html.Div([
+                        create_viral_burden_panel()
                     ]),
                 ),
             ]
