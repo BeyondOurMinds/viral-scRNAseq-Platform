@@ -7,6 +7,7 @@ from .upload_panel import create_upload_panel
 from .QC_panel import create_qc_panel
 from .PreprocessCluster_panel import create_preprocess_cluster_panel
 from .DifferentialExpression_panel import create_differential_expression_panel
+from .ViralGeneDetection_panel import create_viral_gene_detection_panel
 import dash_bootstrap_components as dbc
 
 def create_layout():
@@ -43,10 +44,11 @@ def create_layout():
                     ]),
                 ),
                 dbc.Tab(
-                    label="Viral Burden",
-                    tab_id="VB-tab",
+                    label="Infection Analysis",
+                    tab_id="IA-tab",
                     children=html.Div([
-                        create_viral_burden_panel()
+                        create_viral_gene_detection_panel(),
+                        create_viral_burden_panel(),
                     ]),
                 ),
             ]
