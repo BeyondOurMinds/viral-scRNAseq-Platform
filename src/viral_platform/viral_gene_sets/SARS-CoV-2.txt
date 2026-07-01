@@ -1,0 +1,16 @@
+ORF1ab
+ORF1a
+S
+Spike
+E
+M
+N
+ORF3a
+ORF3b
+ORF6
+ORF7a
+ORF7b
+ORF8
+ORF9b
+ORF9c
+ORF10

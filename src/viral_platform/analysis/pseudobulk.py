@@ -37,8 +37,8 @@ def subset_cells(grouping, group1, group2, celltype="All Cells"):
     if celltype and celltype != "All Cells":
         adata = adata[adata.obs['cell_type'] == celltype].copy()
     
-    print(adata)
-    print(adata.obs[grouping].value_counts())
+    #print(adata)
+    #print(adata.obs[grouping].value_counts())
     
     return adata
 
@@ -61,7 +61,7 @@ def find_biological_replicates(adata, grouping):
     
     # Assuming that biological replicates are identified by unique values in the grouping column
     biological_replicates = adata.obs.groupby(grouping)[sample_column].nunique()
-    print(biological_replicates)
+    # print(biological_replicates)
 
     min_replicates = 2
     if (biological_replicates < min_replicates).any():

@@ -175,5 +175,56 @@ def create_viral_gene_detection_panel():
             ],
             className="mb-3",
             ),
+            # Info Box
+            html.Div(
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            [
+                                html.Span("ℹ", style={"color": "#0d6efd", "fontSize": "18px", "marginRight": "10px"}),
+                                html.Span(
+                                    "Automatic detection searches your dataset's gene names against our curated viral gene lists. "
+                                    "If no matches are found, you will be given the option to search sample metadata.",
+                                    style={"fontSize": "13px"},
+                                ),
+                            ],
+                            style={"display": "flex", "alignItems": "flex-start"},
+                        ),
+                        dbc.Col(
+                            dbc.Button(
+                                [html.Span("🔍 ", style={"fontSize": "12px"}), "View Supported Viruses"],
+                                color="light",
+                                size="sm",
+                                style={"whiteSpace": "nowrap", "border": "1px solid #dee2e6"},
+                            ),
+                            width="auto",
+                            style={"display": "flex", "alignItems": "center"},
+                        ),
+                    ],
+                    align="center",
+                ),
+                style={
+                    "backgroundColor": "#e7f1ff",
+                    "border": "1px solid #b6d4fe",
+                    "borderRadius": "6px",
+                    "padding": "12px 16px",
+                    "marginBottom": "16px",
+                },
+            ),
+            # Loading Signal
+            dcc.Loading(
+                type="default",
+                children=html.Div(id="viral-gene-detection-loading-signal", style={"display": "none"}),
+            ),
+            # Detection Results Container
+            html.Div(
+                id="viral-gene-detection-results-container",
+                children=[
+                    html.P(
+                        "No viral gene detection results yet. Run the detection to see results here.",
+                        style={"color": "#6c757d", "fontSize": "14px"},
+                    )
+                ],
+            ),
         ]
     )
