@@ -10,6 +10,7 @@ import scanpy as sc
 
 from viral_platform.state.dataset_store import set_dataset, set_working_dataset
 from viral_platform.analysis.metadata import discover_metadata
+from viral_platform.analysis.find_raw_counts import find_raw_count_matrix, get_raw_count_matrix
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,15 @@ def _postprocess_loaded_adata(adata, sample_count=None):
     Output: The same AnnData Object after dataset-store updates and QC metric initialization.
     Interacts with set_dataset, set_working_dataset, and Scanpy QC metric calculation
     """
+
+    # finding and preserving raw counts
+    result = find_raw_count_matrix(adata)
+    if result["found"]:
+        raw_counts = get_raw_count_matrix(adata, result["location"])
+
+        adata.layers["counts"] = raw_counts.copy()
+    else:
+        logger.warning("Raw count matrix not found. Proceeding without raw counts layer.")
     set_dataset(adata)
 
     if sample_count is not None:
