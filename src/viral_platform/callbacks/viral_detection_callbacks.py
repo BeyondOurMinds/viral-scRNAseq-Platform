@@ -1,6 +1,7 @@
 from dash import Input, Output, State, html, no_update, dash_table, dcc
 import dash_bootstrap_components as dbc
 from viral_platform.analysis.viral_gene_detection import find_viral_genes, find_custom_viral_genes
+from viral_platform.state.dataset_store import update_state_store
 
 def help_icon():
     return html.Span(
@@ -106,7 +107,18 @@ def create_viral_gene_detection_results(pass_fail, color, gene_count_per_virus, 
                         [
                             # virus_card("🔷", "Epstein–Barr virus (EBV)", "89 genes", "Matched 89 of 182 known genes (48.9%)"),
                             # virus_card("🔵", "Human herpesvirus 6 (HHV-6)", "12 genes", "Matched 12 of 162 known genes (7.4%)"),
-                            *[virus_card("🔷", virus, f"{count} genes", f"Matched {count} genes") for virus, count in gene_count_per_virus.items()],
+                            *[virus_card(
+                                "🔷",
+                                virus,
+                                f"{count} genes",
+                                html.Span(
+                                    [
+                                        f"Matched {count} of {len(all_genes)} genes found ({(count/len(all_genes))*100:.1f}%)",
+                                        html.Br(),
+                                        f"{len(detected_features)} features detected",
+                                    ]
+                                ),
+                            ) for virus, count in gene_count_per_virus.items()],
                             html.Div(
                                 [
                                     html.P(
@@ -175,6 +187,7 @@ def create_viral_gene_detection_results(pass_fail, color, gene_count_per_virus, 
                             dbc.Col(
                                 dbc.Button(
                                     "+ Add Genes",
+                                    id="append-viral-genes-button",
                                     color="primary",
                                     outline=True,
                                     size="sm",
@@ -261,29 +274,47 @@ def register_vd_callbacks(app):
             print(detected_genes)
             gene_count_per_virus = {}
             all_genes = []
+            detected_features = []
             for key, value in detected_genes.items():
                 if value["features"] == [] and value["genes"] == []:
                     continue
                 gene_count_per_virus[key] = len(value["genes"])
                 all_genes.extend(value["genes"])
+                detected_features.extend(value["features"])
             unique_count = sum(gene_count_per_virus.values())
-            detected_features = "temp"
-            return f"Automatic detection completed", create_viral_gene_detection_results('✓', '#198754', gene_count_per_virus, detected_features, all_genes, unique_count)
+            # Update the state store with detected viral genes and features
+            update_state_store(viral_detection={
+                "viral_genes": ", ".join(map(str, all_genes)),
+                "viral_features": ", ".join(map(str, detected_features)),
+            })
+            if len(all_genes) > 0:
+                return f"Automatic detection completed", create_viral_gene_detection_results('✓', '#198754', gene_count_per_virus, detected_features, all_genes, unique_count)
+            else:
+                return f"Automatic detection completed, but no viral genes were detected.", create_viral_gene_detection_results('✗', '#dc3545', gene_count_per_virus, detected_features, all_genes, unique_count)
         elif selected_method == "custom":
             detected_genes = find_custom_viral_genes(custom_gene_list)
             print(detected_genes)
             gene_count_per_virus = {}
             all_genes = []
             not_found = []
+            detected_features = []
             for key, value in detected_genes.items():
                 if detected_genes["features"] == [] and detected_genes["genes"] == []:
                     continue
                 gene_count_per_virus["Custom List"] = len(detected_genes["genes"])
                 all_genes.extend(detected_genes["genes"])
+                detected_features.extend(detected_genes["features"])
             if detected_genes["not_found"] != []:
                 not_found.extend(detected_genes["not_found"])
             else:
                 not_found = None
             unique_count = sum(gene_count_per_virus.values())
-            detected_features = "temp"
-            return f"Custom detection completed", create_viral_gene_detection_results('✓', '#198754', gene_count_per_virus, detected_features, all_genes, unique_count, not_found)
+            # Update the state store with detected viral genes and features
+            update_state_store(viral_detection={
+                "viral_genes": ", ".join(map(str, all_genes)),
+                "viral_features": ", ".join(map(str, detected_features)),
+            })
+            if len(all_genes) > 0:
+                return f"Custom detection completed", create_viral_gene_detection_results('✓', '#198754', gene_count_per_virus, detected_features, all_genes, unique_count, not_found)
+            else:
+                return f"Custom detection completed, but no viral genes were detected.", create_viral_gene_detection_results('✗', '#dc3545', gene_count_per_virus, detected_features, all_genes, unique_count, not_found)
