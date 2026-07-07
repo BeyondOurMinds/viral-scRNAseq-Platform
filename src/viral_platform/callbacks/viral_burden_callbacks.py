@@ -1,6 +1,6 @@
 from dash import Input, Output, State, html, no_update
 import dash_bootstrap_components as dbc
-from viral_platform.state.dataset_store import get_working_dataset, get_state_store
+from viral_platform.state.dataset_store import get_working_dataset, get_state_store, set_working_dataset, sync_state_with_dataset
 import numpy as np
 import logging
 
@@ -33,6 +33,7 @@ def register_viral_burden_callbacks(app):
     @app.callback(
         Output("viral-burden-loading-signal", "children"),
         Output("viral-burden-results-container", "children"),
+        Output("viral-burden-associations-container", "hidden"),
         Input("run-viral-burden-analysis-button", "n_clicks"),
         prevent_initial_call=True,
     )
@@ -109,6 +110,11 @@ def register_viral_burden_callbacks(app):
         # log1p transformation of viral counts
         adata.obs["log1p_viral_counts"] = np.log1p(adata.obs["viral_counts"])
 
+        # update the working dataset in the state store
+        set_working_dataset(adata)
+        sync_state_with_dataset(adata)
+
+
         logger.info("Viral burden analysis completed successfully.")
 
-        return "done", viral_burden_results(adata)
+        return "done", viral_burden_results(adata), False

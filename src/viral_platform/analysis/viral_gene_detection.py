@@ -29,7 +29,21 @@ viral_sets_path = "src/viral_platform/viral_gene_sets/"
 
 def normalize_gene_name(gene, viral_names=None):
     """
-    Normalise a dataset feature name while preserving case.
+        Normalize a viral-related feature name and optionally resolve to a known target.
+
+        Use:
+        - Canonicalizes feature names and, when a reference list is provided, attempts
+            exact or bounded-substring resolution to a viral gene symbol.
+
+        Interacts with:
+        - find_viral_genes, find_custom_viral_genes, viral add-gene callback logic.
+
+        Inputs:
+        - gene (str): raw feature symbol from dataset.
+        - viral_names (iterable[str]|None): optional lookup symbols.
+
+        Outputs:
+        - str: cleaned symbol or resolved lookup symbol.
 
     Examples:
         B958___BLLF1                          -> BLLF1
@@ -81,7 +95,19 @@ def normalize_gene_name(gene, viral_names=None):
 
 def load_viral_gene_set(virus):
     """
-    Loads all viral gene names and synonyms into a set.
+    Load one viral gene set file into a synonym set.
+
+    Use:
+    - Provides lookup symbols for automatic/custom viral detection.
+
+    Interacts with:
+    - find_viral_genes.
+
+    Inputs:
+    - virus (str): viral set file stem.
+
+    Outputs:
+    - set[str]: all known symbols/aliases in the selected set file.
     """
 
     viral_names = set()
@@ -101,6 +127,20 @@ def load_viral_gene_set(virus):
 
 
 def find_viral_genes(value):
+    """Run automatic viral-gene detection for one or all configured viral sets.
+
+    Use:
+    - Main detection path used by the viral detection panel.
+
+    Interacts with:
+    - get_dataset, load_viral_gene_set, normalize_gene_name, register_vd_callbacks.
+
+    Inputs:
+    - value (str): virus name or "__auto__" to scan all sets.
+
+    Outputs:
+    - dict: per-virus detected genes/features and gene->feature mapping.
+    """
 
     adata = get_dataset()
 
@@ -108,30 +148,37 @@ def find_viral_genes(value):
         "EBV": {
             "features": set(),
             "genes": set(),
+            "matched_features_by_gene": {},
         },
         "HIV": {
             "features": set(),
             "genes": set(),
+            "matched_features_by_gene": {},
         },
         "SARS-CoV-2": {
             "features": set(),
             "genes": set(),
+            "matched_features_by_gene": {},
         },
         "InfluenzaA": {
             "features": set(),
             "genes": set(),
+            "matched_features_by_gene": {},
         },
         "InfluenzaB": {
             "features": set(),
             "genes": set(),
+            "matched_features_by_gene": {},
         },
         "RSV": {
             "features": set(),
             "genes": set(),
+            "matched_features_by_gene": {},
         },
         "Zika": {
             "features": set(),
             "genes": set(),
+            "matched_features_by_gene": {},
         },
     }
 
@@ -155,6 +202,7 @@ def find_viral_genes(value):
 
                     detected[virus]["features"].add(feature)
                     detected[virus]["genes"].add(gene)
+                    detected[virus]["matched_features_by_gene"].setdefault(gene, set()).add(feature)
 
             print(
                 f"{virus}: "
@@ -175,6 +223,10 @@ def find_viral_genes(value):
         detected[virus]["genes"] = sorted(
             detected[virus]["genes"]
         )
+        detected[virus]["matched_features_by_gene"] = {
+            gene: sorted(features)
+            for gene, features in sorted(detected[virus]["matched_features_by_gene"].items())
+        }
 
     if value == "__auto__":
         return detected
@@ -183,7 +235,19 @@ def find_viral_genes(value):
 
 def find_custom_viral_genes(custom_gene_list):
     """
-    Detects viral genes based on a custom list provided by the user.
+    Detect viral genes from a user-provided list.
+
+    Use:
+    - Custom detection path and baseline state for add/remove curation.
+
+    Interacts with:
+    - get_dataset, normalize_gene_name, register_vd_callbacks.
+
+    Inputs:
+    - custom_gene_list (str): comma-separated user-entered genes.
+
+    Outputs:
+    - dict: detected genes/features, gene->feature mapping, and not_found list.
     """
 
     adata = get_dataset()
@@ -191,6 +255,7 @@ def find_custom_viral_genes(custom_gene_list):
     detected = {
         "features": set(),
         "genes": set(),
+        "matched_features_by_gene": {},
         "not_found": set(),
     }
 
@@ -205,6 +270,7 @@ def find_custom_viral_genes(custom_gene_list):
 
             detected["features"].add(feature)
             detected["genes"].add(gene)
+            detected["matched_features_by_gene"].setdefault(gene, set()).add(feature)
     
     # Identify genes from the custom list that were not found in the dataset
     detected["not_found"] = set(custom_genes) - detected["genes"]
@@ -219,6 +285,10 @@ def find_custom_viral_genes(custom_gene_list):
     # Convert sets to sorted lists for returning
     detected["features"] = sorted(detected["features"])
     detected["genes"] = sorted(detected["genes"])
+    detected["matched_features_by_gene"] = {
+        gene: sorted(features)
+        for gene, features in sorted(detected["matched_features_by_gene"].items())
+    }
     detected["not_found"] = sorted(detected["not_found"])
 
     return detected

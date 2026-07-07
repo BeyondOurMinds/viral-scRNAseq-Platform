@@ -49,5 +49,34 @@ def create_viral_burden_panel():
                     )
                 ],
             ),
+            # Viral Burden Associations
+            html.Div(
+                id="viral-burden-associations-container",
+                children=[
+                    dbc.Row([
+                        dbc.Col(
+                            html.Div(
+                                id="viral-burden-temp-container",
+                                children=[
+                                    html.H4(
+                                        ["2.1 Viral Burden Association"],
+                                        style={"display": "inline-flex", "alignItems": "center", "marginBottom": "2px"},
+                                    ),
+                                    html.P(
+                                        "Find viral burden associations or some shit",
+                                        style={"color": "#6c757d", "marginBottom": "16px", "marginTop": "8px", "fontSize": "14px"},
+                                    ),
+                                ],
+                            ),
+                        ),
+                        dbc.Col(
+                            dbc.Button("Run Viral Burden Association", id="run-viral-burden-association-button", n_clicks=0, color="primary", className="mb-3"),
+                            width="auto"
+                        )
+                    ]),
+                ],
+                hidden=True,
+                style={"marginTop": "20px", "padding": "10px", "border": "1px solid #dee2e6", "borderRadius": "5px"},
+            )
         ]
     )

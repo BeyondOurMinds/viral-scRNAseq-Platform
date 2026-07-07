@@ -15,7 +15,11 @@ _DEFAULT_HISTORY = {
     "viral_detection": {
         "viral_genes": [],
         "viral_features": [],
-    }
+    },
+    "isg_detection": {
+        "isg_genes": [],
+        "isg_features": [],
+    },
 }
 
 
@@ -38,7 +42,11 @@ def _new_history_state():
         "viral_detection": {
             "viral_genes": [],
             "viral_features": [],
-        }
+        },
+        "isg_detection": {
+            "isg_genes": [],
+            "isg_features": [],
+        },
     }
 
 
@@ -141,4 +149,8 @@ def clear_working_dataset():
     history["viral_detection"] = {
         "viral_genes": [],
         "viral_features": [],
+    }
+    history["isg_detection"] = {
+        "isg_genes": [],
+        "isg_features": [],
     }
