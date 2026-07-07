@@ -89,7 +89,7 @@ def create_viral_gene_detection_panel():
             html.Div(
                 [
                     html.H4(
-                        ["1. Viral Gene Detection", help_icon()],
+                        ["1. Viral Gene Detection"],
                         style={"display": "inline-flex", "alignItems": "center", "marginBottom": "2px"},
                     ),
                     html.P(

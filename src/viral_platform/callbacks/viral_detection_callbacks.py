@@ -1,7 +1,11 @@
-from dash import Input, Output, State, html, no_update, dash_table, dcc
+from dash import Input, Output, State, html, no_update
 import dash_bootstrap_components as dbc
 from viral_platform.analysis.viral_gene_detection import find_viral_genes, find_custom_viral_genes
 from viral_platform.state.dataset_store import update_state_store
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def help_icon():
     return html.Span(

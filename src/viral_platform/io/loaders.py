@@ -140,6 +140,7 @@ def _postprocess_loaded_adata(adata, sample_count=None):
 
     #         if counts.sum() > 0:
     #             print(gene, counts.sum(), (counts > 0).sum())
+    # print("adata obs names:", adata.obs_names[:5])
 
     # end temporary
     discover_metadata(adata)
@@ -260,6 +261,13 @@ def _load_prefixed_10x_samples(root_dir):
         )
     )
     combined.uns["sample_count"] = len(sample_adatas)
+
+    combined.obs["sample_id"] = pd.Series(
+        combined.obs["sample_id"].astype(str).to_numpy(),
+        index=combined.obs.index,
+        dtype=object,
+    )
+
     return combined
 
 

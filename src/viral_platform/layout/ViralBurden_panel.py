@@ -11,6 +11,43 @@ def create_viral_burden_panel():
             "margin": "0 0 20px 0",
         },
         children=[
-            html.H2("Viral Burden Analysis"),
+            # title and run button
+            dbc.Row([
+                dbc.Col(
+                    html.Div(
+                        [
+                            html.H4(
+                                ["2. Viral Burden Analysis"],
+                                style={"display": "inline-flex", "alignItems": "center", "marginBottom": "2px"},
+                            ),
+                            html.P(
+                                "Calculate the viral burden from the detected viral genes",
+                                style={"color": "#6c757d", "marginBottom": "16px", "fontSize": "14px"},
+                            ),
+                        ]
+                    ),
+                ),
+                dbc.Col(
+                    dbc.Button("Run Viral Burden Analysis", id="run-viral-burden-analysis-button", n_clicks=0, color="primary", className="mb-3"),
+                    width="auto"
+                )
+            ]),
+
+            # loading signal
+            dcc.Loading(
+                type="default",
+                children=html.Div(id="viral-burden-loading-signal", style={"display": "none"}),
+            ),
+
+            # results container
+            html.Div(
+                id="viral-burden-results-container",
+                children=[
+                    html.P(
+                        "No viral burden results yet. Run the analysis to see results here.",
+                        style={"color": "#6c757d", "fontSize": "14px"},
+                    )
+                ],
+            ),
         ]
     )

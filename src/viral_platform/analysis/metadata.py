@@ -31,7 +31,7 @@ def discover_metadata(adata):
 
     # Identify specific types of metadata based on naming conventions
     for col in metadata_info_new["groupable_columns"]:
-        if "cell_type" in col.lower() or "celltype" in col.lower():
+        if "cell_type" in col.lower() or "celltype" in col.lower() or "cell type" in col.lower():
             metadata_info_new["cell_type_columns"].append(col)
             metadata_info_new["cell_types"].extend(adata.obs[col].cat.categories.tolist())
             '''if "cell_type" in col.lower():
