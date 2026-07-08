@@ -55,23 +55,57 @@ def create_viral_burden_panel():
                 children=[
                     dbc.Row([
                         dbc.Col(
-                            html.Div(
-                                id="viral-burden-temp-container",
-                                children=[
-                                    html.H4(
-                                        ["2.1 Viral Burden Association"],
-                                        style={"display": "inline-flex", "alignItems": "center", "marginBottom": "2px"},
-                                    ),
-                                    html.P(
-                                        "Find viral burden associations or some shit",
-                                        style={"color": "#6c757d", "marginBottom": "16px", "marginTop": "8px", "fontSize": "14px"},
-                                    ),
-                                ],
-                            ),
+                            children=[
+                                html.Div(
+                                    id="viral-burden-associations-title-container",
+                                    children=[
+                                        html.H4(
+                                            ["2.1 Viral Burden Association"],
+                                            style={"display": "inline-flex", "alignItems": "center", "marginBottom": "2px"},
+                                        ),
+                                        html.P(
+                                            "Find viral burden associations or correlations",
+                                            style={"color": "#6c757d", "marginBottom": "16px", "marginTop": "8px", "fontSize": "14px"},
+                                        ),
+                                    ],
+                                ),
+                            ],
                         ),
                         dbc.Col(
                             dbc.Button("Run Viral Burden Association", id="run-viral-burden-association-button", n_clicks=0, color="primary", className="mb-3"),
                             width="auto"
+                        ),
+                        
+                        
+                    ]),
+
+                    # loading signal
+                    dcc.Loading(
+                        type="default",
+                        children=html.Div(id="viral-burden-associations-loading-signal", style={"display": "none"}),
+                    ),
+
+                    # results container
+                    dbc.Row([
+                        dbc.Col(
+                            children=[
+                                html.Div(
+                                    id="viral-burden-associations-results-container",
+                                    children=[
+                                        html.P(
+                                            "You should never see this choom",
+                                        ),
+                                    ],
+                                ),
+                                html.Div(
+                                    id="viral-burden-associations-significant-results-container",
+                                    children=[
+                                        html.P(
+                                            "You should never see this choom",
+                                        ),
+                                    ],
+                                ),
+                            ],
                         )
                     ]),
                 ],

@@ -1,10 +1,26 @@
-from dash import Input, Output, State, html, no_update
+from dash import Input, Output, State, dash_table, html, no_update
 import dash_bootstrap_components as dbc
+from viral_platform.analysis.viral_burden_associations import calculate_viral_burden_associations, identify_significant_associations
 from viral_platform.state.dataset_store import get_working_dataset, get_state_store, set_working_dataset, sync_state_with_dataset
 import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def make_sortable_table(df, table_id):
+    """Create a sortable Dash DataTable from a DataFrame."""
+    return dash_table.DataTable(
+        id=table_id,
+        columns=[{"name": col, "id": col} for col in df.columns],
+        data=df.to_dict("records"),
+        sort_action="native",
+        page_action="native",
+        page_size=20,
+        style_table={"overflowX": "auto"},
+        style_cell={"textAlign": "left", "padding": "6px", "fontSize": "13px"},
+        style_header={"fontWeight": "600"},
+    )
 
 def viral_burden_results(adata):
     infected_cells = (adata.obs['viral_counts'] > 0).sum()
@@ -118,3 +134,44 @@ def register_viral_burden_callbacks(app):
         logger.info("Viral burden analysis completed successfully.")
 
         return "done", viral_burden_results(adata), False
+    
+    @app.callback(
+        Output("viral-burden-associations-loading-signal", "children"),
+        Output("viral-burden-associations-results-container", "children"),
+        Output("viral-burden-associations-significant-results-container", "children"),
+        Input("run-viral-burden-association-button", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def run_viral_burden_associations(n_clicks):
+        if n_clicks is None or n_clicks == 0:
+            return no_update, "No viral burden association results yet. Run the analysis to see results here.", ""
+        
+        adata = get_working_dataset()
+        if adata is None:
+            return no_update, "No dataset available for viral burden association analysis.", ""
+        
+        features = get_state_store().get("viral_detection", {}).get("viral_features", "")
+        if not features:
+            return no_update, "No viral features detected. Please run viral gene detection first.", ""
+
+        if isinstance(features, str):
+            features = [f.strip() for f in features.split(",") if f.strip()]
+        else:
+            features = [f for f in features if f]
+
+        if not features:
+            return no_update, "No valid viral features detected. Please run viral gene detection first.", ""
+        
+        try:
+            associations_df = calculate_viral_burden_associations(features)
+            logger.info("Viral burden association analysis completed successfully.")
+            significant_associations_df = identify_significant_associations(associations_df)
+            logger.info("Significant viral burden associations identified successfully.")
+            return (
+                "done",
+                make_sortable_table(associations_df, "viral-burden-associations-table"),
+                make_sortable_table(significant_associations_df, "viral-burden-significant-associations-table"),
+            )
+        except Exception as e:
+            logger.exception("Failed to calculate viral burden associations: %s", str(e))
+            return no_update, f"Failed to calculate viral burden associations: {str(e)}", ""

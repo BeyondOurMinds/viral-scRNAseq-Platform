@@ -1,7 +1,9 @@
 import numpy as np
 import logging
 import pandas as pd
+import time
 from scipy.stats import spearmanr
+from scipy import sparse
 from statsmodels.stats.multitest import multipletests
 
 from viral_platform.state.dataset_store import get_working_dataset, set_working_dataset
@@ -42,15 +44,28 @@ def calculate_viral_burden_associations(viral_features, min_cells=10):
     expressed_cells = np.asarray(
         (adata_host.X > 0).sum(axis=0)
     ).ravel()
+    logger.info(f"Filtering genes expressed in fewer than {min_cells} cells. Total genes before filtering: {adata_host.n_vars}")
 
     keep = expressed_cells >= min_cells
+    logger.info(f"Total genes after filtering: {keep.sum()}")
     adata_filtered = adata_host[:, keep]
 
     # initialize results
     results = []
+    total_genes = adata_filtered.n_vars
+    zero_variance_skipped = 0
+    nan_corr_skipped = 0
+
+    # Use CSC format for fast per-gene column slicing in sparse matrices.
+    X = adata_filtered.X
+    if sparse.issparse(X):
+        X = X.tocsc()
+
+    start_time = time.perf_counter()
+    logger.info(f"Starting correlation loop across {total_genes} genes.")
 
     for i, gene in enumerate(adata_filtered.var_names):
-        expression = adata_filtered.X[:, i]
+        expression = X[:, i]
 
         if hasattr(expression, "toarray"):  # Check if it's a sparse matrix
             expression = expression.toarray().ravel()
@@ -58,7 +73,7 @@ def calculate_viral_burden_associations(viral_features, min_cells=10):
             expression = np.asarray(expression).ravel()
         
         if np.std(expression) == 0:
-            logger.warning(f"Gene {gene} has zero variance in expression. Skipping correlation.")
+            zero_variance_skipped += 1
             continue
 
         corr, pval = spearmanr(
@@ -67,7 +82,7 @@ def calculate_viral_burden_associations(viral_features, min_cells=10):
         )
 
         if np.isnan(corr) or np.isnan(pval):
-            logger.warning(f"Spearman correlation returned NaN for gene {gene}. Skipping.")
+            nan_corr_skipped += 1
             continue
 
         results.append({
@@ -76,7 +91,34 @@ def calculate_viral_burden_associations(viral_features, min_cells=10):
             "p_value": pval
         })
 
+        if (i + 1) % 500 == 0 or (i + 1) == total_genes:
+            elapsed = time.perf_counter() - start_time
+            rate = (i + 1) / elapsed if elapsed > 0 else 0
+            remaining = (total_genes - (i + 1)) / rate if rate > 0 else float("inf")
+            logger.info(
+                "Processed %d/%d genes (%.1f%%). Elapsed: %.1fs. ETA: %.1fs.",
+                i + 1,
+                total_genes,
+                ((i + 1) / total_genes) * 100 if total_genes else 100.0,
+                elapsed,
+                remaining if np.isfinite(remaining) else -1,
+            )
+    logger.info(
+        "Spearman correlation analysis completed. Total genes analyzed: %d; zero variance skipped: %d; NaN skipped: %d.",
+        len(results),
+        zero_variance_skipped,
+        nan_corr_skipped,
+    )
+
     results = pd.DataFrame(results)
+    logger.info(f"Results DataFrame created with shape: {results.shape}")
+
+    if results.empty:
+        logger.warning("No valid host genes remained after filtering/correlation steps.")
+        results = pd.DataFrame(columns=["gene", "spearman_corr", "p_value", "adj_p_value"])
+        adata.uns["viral_burden_associations"] = results
+        set_working_dataset(adata)
+        return results
 
     results = results.sort_values(
         "spearman_corr", ascending=False
@@ -85,6 +127,7 @@ def calculate_viral_burden_associations(viral_features, min_cells=10):
     results["adj_p_value"] = multipletests(
         results["p_value"], method="fdr_bh"
     )[1]
+    logger.info("FDR adjustment completed using Benjamini-Hochberg method.")
 
     adata.uns["viral_burden_associations"] = results
 
@@ -113,46 +156,79 @@ def identify_significant_associations(results, corr_threshold=0.3, fdr_threshold
     
     adata = get_working_dataset()
 
-    positive = results[
-        (results["spearman_corr"] >= corr_threshold) &
-        (results["adj_p_value"] < fdr_threshold)
-    ]
-    negative = results[
-        (results["spearman_corr"] <= -corr_threshold) &
-        (results["adj_p_value"] < fdr_threshold)
-    ]
-    
-    positive = positive.sort_values("spearman_corr", ascending=False)
-    negative = negative.sort_values("spearman_corr", ascending=True)
+    required_cols = {"gene", "spearman_corr", "adj_p_value"}
+    missing_cols = required_cols - set(results.columns)
+    if missing_cols:
+        raise ValueError(f"Missing required columns in results: {sorted(missing_cols)}")
 
+    significant = results[
+        results["adj_p_value"] < fdr_threshold
+    ].copy()
+
+    positive = significant[
+        significant["spearman_corr"] > 0
+    ].sort_values("spearman_corr", ascending=False)
+
+    negative = significant[
+        significant["spearman_corr"] < 0
+    ].sort_values("spearman_corr", ascending=True)
+
+    strong_positive = positive[
+        positive["spearman_corr"] >= corr_threshold
+    ]
+
+    strong_negative = negative[
+        negative["spearman_corr"] <= -corr_threshold
+    ]
+
+    logger.info(
+        "Significant genes (FDR < %.3f): %d total, %d positive, %d negative.",
+        fdr_threshold,
+        len(significant),
+        len(positive),
+        len(negative),
+    )
+    logger.info(
+        "Strong subset (|corr| >= %.3f): %d positive, %d negative.",
+        corr_threshold,
+        len(strong_positive),
+        len(strong_negative),
+    )
+
+    if not significant.empty:
+        significant["direction"] = np.where(
+            significant["spearman_corr"] >= 0,
+            "positive",
+            "negative",
+        )
+        significant["passes_corr_threshold"] = (
+            np.abs(significant["spearman_corr"]) >= corr_threshold
+        )
+        significant = significant.sort_values(
+            ["adj_p_value", "spearman_corr"],
+            ascending=[True, False],
+        )
+
+    adata.uns["viral_significant_associations"] = significant
     adata.uns["viral_positive_associations"] = positive
     adata.uns["viral_negative_associations"] = negative
+    adata.uns["viral_strong_positive_associations"] = strong_positive
+    adata.uns["viral_strong_negative_associations"] = strong_negative
 
     summary = {
         "genes_tested": len(results),
+        "significant_total": len(significant),
         "positive_associations": len(positive),
         "negative_associations": len(negative),
+        "strong_positive_associations": len(strong_positive),
+        "strong_negative_associations": len(strong_negative),
         "strongest_positive": positive.iloc[0]["gene"] if len(positive) else None,
-        "strongest_negative": negative.iloc[0]["gene"] if len(negative) else None
+        "strongest_negative": negative.iloc[0]["gene"] if len(negative) else None,
     }
+    logger.info(f"Viral burden association summary: {summary}")
 
     adata.uns["viral_burden_association_summary"] = summary
 
     set_working_dataset(adata)
 
-    # debug statements
-    print("\nTop positive associations")
-    print(
-        positive[
-            ["gene", "spearman_corr", "adj_p_value"]
-        ].head(10)
-    )
-
-    print("\nTop negative associations")
-    print(
-        negative[
-            ["gene", "spearman_corr", "adj_p_value"]
-        ].head(10)
-    )
-
-    return summary
+    return significant
