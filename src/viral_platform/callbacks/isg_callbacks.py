@@ -114,8 +114,10 @@ def isg_set_card(icon_char, name, badge_text, detail):
 		],
 		style={
 			"padding": "12px 16px",
-			"borderRight": "1px solid #dee2e6",
-			"flex": "1",
+			"border": "1px solid #dee2e6",
+			"borderRadius": "6px",
+			"backgroundColor": "#fff",
+			"height": "100%",
 		},
 	)
 
@@ -208,6 +210,29 @@ def _build_isg_gene_entries(genes, matched_features_by_gene):
 	return entries
 
 
+def _format_detected_grouped_list(set_to_genes, empty_message):
+	"""Format grouped detected-gene text as '(set): gene1, gene2' chunks.
+
+	Use:
+	- Produces display-only grouped list text for detection result accordions.
+
+	Interacts with:
+	- create_isg_detection_results, curate_isg_gene_list.
+
+	Inputs:
+	- set_to_genes (dict[str, iterable[str]]), empty_message (str).
+
+	Outputs:
+	- str: grouped list text or empty_message.
+	"""
+	parts = []
+	for set_name in sorted((set_to_genes or {}).keys()):
+		genes = sorted(set(set_to_genes.get(set_name, [])))
+		if genes:
+			parts.append(f"({set_name}): {', '.join(genes)}")
+	return " ".join(parts) if parts else empty_message
+
+
 def create_isg_detection_results(
 	pass_fail,
 	color,
@@ -217,6 +242,7 @@ def create_isg_detection_results(
 	detected_gene_entries,
 	unique_count,
 	not_found=None,
+	detected_gene_sets=None,
 ):
 	"""Render the full ISG detection results section.
 
@@ -235,6 +261,11 @@ def create_isg_detection_results(
 	Outputs:
 	- dash.html.Div containing the interactive results UI.
 	"""
+	grouped_list_text = _format_detected_grouped_list(
+		detected_gene_sets,
+		"No ISGs currently selected.",
+	)
+
 	return html.Div(
 		[
 			dbc.Row(
@@ -268,27 +299,47 @@ def create_isg_detection_results(
 			html.P("Detected ISGs in Dataset", style={"fontWeight": "600", "marginBottom": "10px"}),
 			html.Div(
 				[
-					*_build_isg_set_cards(gene_count_per_set, total_genes_per_set, detected_features),
-					html.Div(
+					dbc.Row(
 						[
-							html.P(
-								"Total unique ISGs detected",
-								style={"fontSize": "12px", "color": "#6c757d", "margin": "0 0 2px"},
-							),
-							html.Span(
-								f"{unique_count}",
-								id="detected-isg-unique-count",
-								style={"fontSize": "32px", "fontWeight": "700", "color": "#198754"},
+							*[
+								dbc.Col(card, xs=12, md=6, lg=4)
+								for card in _build_isg_set_cards(gene_count_per_set, total_genes_per_set, detected_features)
+							],
+							dbc.Col(
+								html.Div(
+									[
+										html.P(
+											"Total unique ISGs detected",
+											style={"fontSize": "12px", "color": "#6c757d", "margin": "0 0 2px"},
+										),
+										html.Span(
+											f"{unique_count}",
+											id="detected-isg-unique-count",
+											style={"fontSize": "32px", "fontWeight": "700", "color": "#198754"},
+										),
+									],
+									style={
+										"padding": "12px 16px",
+										"textAlign": "center",
+										"border": "1px solid #dee2e6",
+										"borderRadius": "6px",
+										"backgroundColor": "#fff",
+										"height": "100%",
+									},
+								),
+								xs=12,
+								md=6,
+								lg=4,
 							),
 						],
-						style={"padding": "12px 16px", "textAlign": "center", "flex": "0 0 auto"},
+						className="g-2",
 					),
 				],
 				style={
-					"display": "flex",
 					"border": "1px solid #dee2e6",
 					"borderRadius": "6px",
 					"backgroundColor": "#fff",
+					"padding": "8px",
 					"marginBottom": "12px",
 				},
 			),
@@ -315,7 +366,7 @@ def create_isg_detection_results(
 									html.Div(
 										id="current-detected-isg-gene-list",
 										children=html.P(
-											", ".join([entry["label"] for entry in detected_gene_entries]),
+											grouped_list_text,
 											style={"fontSize": "13px", "color": "#6c757d", "whiteSpace": "pre-wrap"},
 										),
 									),
@@ -559,6 +610,7 @@ def register_isg_callbacks(app):
 			detected_genes = find_isg_genes(selected_set)
 			gene_count_per_set = {}
 			total_genes_per_set = {}
+			detected_gene_sets = {}
 			all_genes = []
 			detected_features = []
 			core_to_features = {}
@@ -567,6 +619,7 @@ def register_isg_callbacks(app):
 				if value["features"] == [] and value["genes"] == []:
 					continue
 				gene_count_per_set[key] = len(value["genes"])
+				detected_gene_sets[key] = sorted(set(value["genes"]))
 				all_genes.extend(value["genes"])
 				detected_features.extend(value["features"])
 				for core_gene, features in value.get("matched_features_by_gene", {}).items():
@@ -582,6 +635,10 @@ def register_isg_callbacks(app):
 				isg_detection={
 					"isg_genes": ", ".join(all_genes),
 					"isg_features": ", ".join(detected_features),
+					"detected_gene_sets": {
+						set_name: sorted(set(genes))
+						for set_name, genes in sorted(detected_gene_sets.items())
+					},
 					"matched_features_by_gene": {
 						gene: sorted(features)
 						for gene, features in sorted(core_to_features.items())
@@ -600,6 +657,7 @@ def register_isg_callbacks(app):
 						detected_features,
 						detected_gene_entries,
 						unique_count,
+						detected_gene_sets=detected_gene_sets,
 					),
 					False,
 				)
@@ -614,6 +672,7 @@ def register_isg_callbacks(app):
 					detected_features,
 					[],
 					0,
+					detected_gene_sets=detected_gene_sets,
 				),
 				True,
 			)
@@ -633,6 +692,7 @@ def register_isg_callbacks(app):
 			gene: set(features)
 			for gene, features in detected.get("matched_features_by_gene", {}).items()
 		}
+		detected_gene_sets = {"Custom List": all_genes}
 		detected_gene_entries = _build_isg_gene_entries(all_genes, core_to_features)
 		gene_count_per_set = {"Custom List": unique_count}
 		total_genes_per_set = {"Custom List": unique_count}
@@ -642,6 +702,7 @@ def register_isg_callbacks(app):
 			isg_detection={
 				"isg_genes": ", ".join(all_genes),
 				"isg_features": ", ".join(detected_features),
+				"detected_gene_sets": {"Custom List": all_genes},
 				"matched_features_by_gene": {
 					gene: sorted(features)
 					for gene, features in sorted(core_to_features.items())
@@ -661,6 +722,7 @@ def register_isg_callbacks(app):
 					detected_gene_entries,
 					unique_count,
 					not_found,
+					detected_gene_sets,
 				),
 				False,
 			)
@@ -676,6 +738,7 @@ def register_isg_callbacks(app):
 				[],
 				0,
 				not_found,
+				detected_gene_sets,
 			),
 			True,
 		)
@@ -720,6 +783,13 @@ def register_isg_callbacks(app):
 			gene: set(gene_features)
 			for gene, gene_features in isg_state.get("matched_features_by_gene", {}).items()
 		}
+		detected_gene_sets = {
+			set_name: set(set_genes)
+			for set_name, set_genes in isg_state.get("detected_gene_sets", {}).items()
+		}
+
+		if not detected_gene_sets and genes:
+			detected_gene_sets = {"Detected": set(genes)}
 
 		alert_text = ""
 		alert_open = False
@@ -731,6 +801,8 @@ def register_isg_callbacks(app):
 				for feature in matched_features_by_gene.get(gene, set()):
 					features.discard(feature)
 				matched_features_by_gene.pop(gene, None)
+				for set_name in list(detected_gene_sets.keys()):
+					detected_gene_sets[set_name].discard(gene)
 
 		elif triggered == "append-isg-genes-button":
 			adata = get_dataset() or get_working_dataset()
@@ -740,9 +812,11 @@ def register_isg_callbacks(app):
 			else:
 				set_names = list_isg_sets() if selected_set in (None, "__auto__") else [selected_set]
 				alias_to_core = {}
+				set_to_core_genes = {}
 				for set_name in set_names:
 					set_data = load_isg_set(set_name)
 					alias_to_core.update(set_data["alias_to_core"])
+					set_to_core_genes[set_name] = set(set_data["core_genes"])
 
 				not_found = []
 				for query in _split_input_genes(appended_text):
@@ -760,6 +834,16 @@ def register_isg_callbacks(app):
 						genes.add(core_target)
 						matched_features_by_gene.setdefault(core_target, set()).update(matched_for_query)
 						features.update(matched_for_query)
+						matched_sets = [
+							set_name
+							for set_name, core_genes in set_to_core_genes.items()
+							if core_target in core_genes
+						]
+						if matched_sets:
+							for set_name in matched_sets:
+								detected_gene_sets.setdefault(set_name, set()).add(core_target)
+						else:
+							detected_gene_sets.setdefault("Manual Append", set()).add(core_target)
 					else:
 						not_found.append(query)
 
@@ -771,10 +855,17 @@ def register_isg_callbacks(app):
 					)
 					alert_open = True
 
+		detected_gene_sets = {
+			set_name: sorted(set_genes)
+			for set_name, set_genes in sorted(detected_gene_sets.items())
+			if set_genes
+		}
+
 		update_state_store(
 			isg_detection={
 				"isg_genes": ", ".join(sorted(genes)),
 				"isg_features": ", ".join(sorted(features)),
+				"detected_gene_sets": detected_gene_sets,
 				"matched_features_by_gene": {
 					gene: sorted(gene_features)
 					for gene, gene_features in sorted(matched_features_by_gene.items())
@@ -783,7 +874,7 @@ def register_isg_callbacks(app):
 		)
 
 		entries = _build_isg_gene_entries(genes, matched_features_by_gene)
-		list_text = ", ".join([entry["label"] for entry in entries]) if entries else "No ISGs currently selected."
+		list_text = _format_detected_grouped_list(detected_gene_sets, "No ISGs currently selected.")
 
 		return (
 			entries,

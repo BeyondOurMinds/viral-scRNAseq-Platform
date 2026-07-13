@@ -93,7 +93,7 @@ def create_viral_burden_panel():
                                     id="viral-burden-associations-results-container",
                                     children=[
                                         html.P(
-                                            "You should never see this choom",
+                                            "No viral burden associations results yet. Run the analysis to see results here.",
                                         ),
                                     ],
                                 ),
@@ -101,7 +101,7 @@ def create_viral_burden_panel():
                                     id="viral-burden-associations-significant-results-container",
                                     children=[
                                         html.P(
-                                            "You should never see this choom",
+                                            "",
                                         ),
                                     ],
                                 ),

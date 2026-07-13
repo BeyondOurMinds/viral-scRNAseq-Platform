@@ -6,6 +6,7 @@ import dash_bootstrap_components as dbc
 from viral_platform.analysis.viral_gene_detection import (
 	find_custom_viral_genes,
 	find_viral_genes,
+	list_viral_gene_sets,
 	normalize_gene_name,
 )
 from viral_platform.state.dataset_store import get_dataset, get_state_store, get_working_dataset, update_state_store
@@ -81,7 +82,13 @@ def virus_card(icon_char, name, badge_text, detail):
 				style={"display": "flex", "alignItems": "center"},
 			),
 		],
-		style={"padding": "12px 16px", "borderRight": "1px solid #dee2e6", "flex": "1"},
+		style={
+			"padding": "12px 16px",
+			"border": "1px solid #dee2e6",
+			"borderRadius": "6px",
+			"backgroundColor": "#fff",
+			"height": "100%",
+		},
 	)
 
 
@@ -134,7 +141,48 @@ def _build_viral_gene_entries(genes, matched_features_by_gene):
 	return entries
 
 
-def create_viral_gene_detection_results(pass_fail, color, gene_count_per_virus, detected_features, gene_entries, unique_count, not_found=None):
+def _build_gene_options(genes):
+	"""Build standardized dropdown options for normalized gene names.
+
+	Use:
+	- Keeps host-virus interaction dropdown options in a consistent label/value format.
+
+	Interacts with:
+	- run_viral_gene_detection, curate_viral_gene_list.
+
+	Inputs:
+	- genes (iterable[str]).
+
+	Outputs:
+	- list[dict]: options as {"label": gene, "value": gene}.
+	"""
+	return [{"label": gene, "value": gene} for gene in sorted(set(genes))]
+
+
+def _format_detected_grouped_list(set_to_genes, empty_message):
+	"""Format grouped detected-gene text as '(set): gene1, gene2' chunks.
+
+	Use:
+	- Produces display-only grouped list text for detection result accordions.
+
+	Interacts with:
+	- create_viral_gene_detection_results, curate_viral_gene_list.
+
+	Inputs:
+	- set_to_genes (dict[str, iterable[str]]), empty_message (str).
+
+	Outputs:
+	- str: grouped list text or empty_message.
+	"""
+	parts = []
+	for set_name in sorted((set_to_genes or {}).keys()):
+		genes = sorted(set(set_to_genes.get(set_name, [])))
+		if genes:
+			parts.append(f"({set_name}): {', '.join(genes)}")
+	return " ".join(parts) if parts else empty_message
+
+
+def create_viral_gene_detection_results(pass_fail, color, gene_count_per_virus, detected_features, gene_entries, unique_count, not_found=None, detected_gene_sets=None):
 	"""Render full viral detection results UI with curation controls.
 
 	Use:
@@ -153,6 +201,10 @@ def create_viral_gene_detection_results(pass_fail, color, gene_count_per_virus, 
 	- dash.html.Div containing interactive viral detection results.
 	"""
 	all_genes_count = unique_count if unique_count else 0
+	grouped_list_text = _format_detected_grouped_list(
+		detected_gene_sets,
+		"No viral genes currently selected.",
+	)
 	return html.Div(
 		[
 			dbc.Row(
@@ -186,34 +238,63 @@ def create_viral_gene_detection_results(pass_fail, color, gene_count_per_virus, 
 			html.P("Detected Viral Genes in Dataset", style={"fontWeight": "600", "marginBottom": "10px"}),
 			html.Div(
 				[
-					*[
-						virus_card(
-							"\U0001f537",
-							virus,
-							f"{count} genes",
-							html.Span(
-								[
-									f"Matched {count} of {all_genes_count} genes found ({((count / all_genes_count) * 100.0 if all_genes_count else 0.0):.1f}%)",
-									html.Br(),
-									f"{len(detected_features)} features detected",
-								]
-							),
-						)
-						for virus, count in gene_count_per_virus.items()
-					],
-					html.Div(
+					dbc.Row(
 						[
-							html.P("Total unique viral genes detected", style={"fontSize": "12px", "color": "#6c757d", "margin": "0 0 2px"}),
-							html.Span(f"{unique_count}", id="detected-viral-unique-count", style={"fontSize": "32px", "fontWeight": "700", "color": "#198754"}),
+							*[
+								dbc.Col(
+									virus_card(
+										"\U0001f537",
+										virus,
+										f"{count} genes",
+										html.Span(
+											[
+												f"Matched {count} of {all_genes_count} genes found ({((count / all_genes_count) * 100.0 if all_genes_count else 0.0):.1f}%)",
+												html.Br(),
+												f"{len(detected_features)} features detected",
+											]
+										),
+									),
+									xs=12,
+									md=6,
+									lg=4,
+								)
+								for virus, count in gene_count_per_virus.items()
+							],
+							dbc.Col(
+								html.Div(
+									[
+										html.P(
+											"Total unique viral genes detected",
+											style={"fontSize": "12px", "color": "#6c757d", "margin": "0 0 2px"},
+										),
+										html.Span(
+											f"{unique_count}",
+											id="detected-viral-unique-count",
+											style={"fontSize": "32px", "fontWeight": "700", "color": "#198754"},
+										),
+									],
+									style={
+										"padding": "12px 16px",
+										"textAlign": "center",
+										"border": "1px solid #dee2e6",
+										"borderRadius": "6px",
+										"backgroundColor": "#fff",
+										"height": "100%",
+									},
+								),
+								xs=12,
+								md=6,
+								lg=4,
+							),
 						],
-						style={"padding": "12px 16px", "textAlign": "center", "flex": "0 0 auto"},
+						className="g-2",
 					),
 				],
 				style={
-					"display": "flex",
 					"border": "1px solid #dee2e6",
 					"borderRadius": "6px",
 					"backgroundColor": "#fff",
+					"padding": "8px",
 					"marginBottom": "12px",
 				},
 			),
@@ -240,7 +321,7 @@ def create_viral_gene_detection_results(pass_fail, color, gene_count_per_virus, 
 									html.Div(
 										id="current-detected-viral-gene-list",
 										children=html.P(
-											", ".join([entry["label"] for entry in gene_entries]),
+											grouped_list_text,
 											style={"fontSize": "13px", "color": "#6c757d", "whiteSpace": "pre-wrap"},
 										),
 									),
@@ -299,6 +380,21 @@ def register_vd_callbacks(app):
 	Outputs:
 	- None (side effect: callback registration).
 	"""
+	@app.callback(
+		Output("virus-select-dropdown", "options"),
+		Input("virus-select-dropdown", "id"),
+	)
+	def populate_viral_set_options(_):
+		"""Populate viral-set dropdown options from files available on disk.
+
+		Inputs: ignored trigger value.
+		Outputs: list[dict] dropdown options.
+		Interacts with: list_viral_gene_sets.
+		"""
+		options = [{"label": "Auto-detect (search all known viruses)", "value": "__auto__"}]
+		options.extend({"label": set_name, "value": set_name} for set_name in list_viral_gene_sets())
+		return options
+
 	@app.callback(
 		Output("custom-detection-card", "style"),
 		Output("custom-detection-card-title", "style"),
@@ -359,6 +455,7 @@ def register_vd_callbacks(app):
 	@app.callback(
 		Output("viral-gene-detection-loading-signal", "children"),
 		Output("viral-gene-detection-results-container", "children"),
+		Output("host-virus-interaction-dropdown", "options"),
 		Input("run-viral-gene-detection-button", "n_clicks"),
 		State("detection-method-radio", "value"),
 		State("custom-gene-list-input", "value"),
@@ -381,11 +478,12 @@ def register_vd_callbacks(app):
 		- loading text and detection-results component.
 		"""
 		if n_clicks is None or n_clicks == 0:
-			return no_update, "No viral gene detection results yet. Run the detection to see results here."
+			return no_update, "No viral gene detection results yet. Run the detection to see results here.", no_update
 
 		if selected_method == "automatic":
 			detected = find_viral_genes(selected_virus)
 			gene_count_per_virus = {}
+			detected_gene_sets = {}
 			all_genes = []
 			detected_features = []
 			matched_features_by_gene = {}
@@ -393,6 +491,7 @@ def register_vd_callbacks(app):
 				if value["features"] == [] and value["genes"] == []:
 					continue
 				gene_count_per_virus[_] = len(value["genes"])
+				detected_gene_sets[_] = sorted(set(value["genes"]))
 				all_genes.extend(value["genes"])
 				detected_features.extend(value["features"])
 				for gene, features in value.get("matched_features_by_gene", {}).items():
@@ -406,6 +505,10 @@ def register_vd_callbacks(app):
 				viral_detection={
 					"viral_genes": ", ".join(all_genes),
 					"viral_features": ", ".join(detected_features),
+					"detected_gene_sets": {
+						set_name: sorted(set(genes))
+						for set_name, genes in sorted(detected_gene_sets.items())
+					},
 					"matched_features_by_gene": {
 						gene: sorted(features)
 						for gene, features in sorted(matched_features_by_gene.items())
@@ -414,8 +517,16 @@ def register_vd_callbacks(app):
 			)
 
 			if unique_count > 0:
-				return "Automatic detection completed", create_viral_gene_detection_results("\u2713", "#198754", gene_count_per_virus, detected_features, gene_entries, unique_count)
-			return "Automatic detection completed, but no viral genes were detected.", create_viral_gene_detection_results("\u2717", "#dc3545", gene_count_per_virus, detected_features, [], 0)
+				return (
+					"Automatic detection completed",
+					create_viral_gene_detection_results("\u2713", "#198754", gene_count_per_virus, detected_features, gene_entries, unique_count, detected_gene_sets=detected_gene_sets),
+					_build_gene_options(all_genes),
+				)
+			return (
+				"Automatic detection completed, but no viral genes were detected.",
+				create_viral_gene_detection_results("\u2717", "#dc3545", gene_count_per_virus, detected_features, [], 0, detected_gene_sets=detected_gene_sets),
+				_build_gene_options(all_genes),
+			)
 
 		detected = find_custom_viral_genes(custom_gene_list)
 		all_genes = sorted(set(detected["genes"]))
@@ -426,11 +537,13 @@ def register_vd_callbacks(app):
 		}
 		unique_count = len(all_genes)
 		not_found = detected["not_found"] if detected["not_found"] else None
+		detected_gene_sets = {"Custom List": all_genes}
 		gene_entries = _build_viral_gene_entries(all_genes, matched_features_by_gene)
 		update_state_store(
 			viral_detection={
 				"viral_genes": ", ".join(all_genes),
 				"viral_features": ", ".join(detected_features),
+				"detected_gene_sets": {"Custom List": all_genes},
 				"matched_features_by_gene": {
 					gene: sorted(features)
 					for gene, features in sorted(matched_features_by_gene.items())
@@ -439,8 +552,16 @@ def register_vd_callbacks(app):
 		)
 		gene_count_per_virus = {"Custom List": unique_count}
 		if unique_count > 0:
-			return "Custom detection completed", create_viral_gene_detection_results("\u2713", "#198754", gene_count_per_virus, detected_features, gene_entries, unique_count, not_found)
-		return "Custom detection completed, but no viral genes were detected.", create_viral_gene_detection_results("\u2717", "#dc3545", gene_count_per_virus, detected_features, [], 0, not_found)
+			return (
+				"Custom detection completed",
+				create_viral_gene_detection_results("\u2713", "#198754", gene_count_per_virus, detected_features, gene_entries, unique_count, not_found, detected_gene_sets),
+				_build_gene_options(all_genes),
+			)
+		return (
+			"Custom detection completed, but no viral genes were detected.",
+			create_viral_gene_detection_results("\u2717", "#dc3545", gene_count_per_virus, detected_features, [], 0, not_found, detected_gene_sets),
+			_build_gene_options(all_genes),
+		)
 
 	@app.callback(
 		Output("detected-viral-genes-dropdown", "options"),
@@ -449,6 +570,7 @@ def register_vd_callbacks(app):
 		Output("detected-viral-unique-count", "children"),
 		Output("append-viral-genes-alert", "children"),
 		Output("append-viral-genes-alert", "is_open"),
+		Output("host-virus-interaction-dropdown", "options", allow_duplicate=True),
 		Input("remove-detected-viral-genes-button", "n_clicks"),
 		Input("append-viral-genes-button", "n_clicks"),
 		State("detected-viral-genes-dropdown", "value"),
@@ -481,6 +603,13 @@ def register_vd_callbacks(app):
 			gene: set(gene_features)
 			for gene, gene_features in viral_state.get("matched_features_by_gene", {}).items()
 		}
+		detected_gene_sets = {
+			set_name: set(set_genes)
+			for set_name, set_genes in viral_state.get("detected_gene_sets", {}).items()
+		}
+
+		if not detected_gene_sets and genes:
+			detected_gene_sets = {"Detected": set(genes)}
 
 		alert_text = ""
 		alert_open = False
@@ -492,6 +621,8 @@ def register_vd_callbacks(app):
 				for feature in matched_features_by_gene.get(gene, set()):
 					features.discard(feature)
 				matched_features_by_gene.pop(gene, None)
+				for set_name in list(detected_gene_sets.keys()):
+					detected_gene_sets[set_name].discard(gene)
 
 		elif triggered == "append-viral-genes-button":
 			adata = get_dataset() or get_working_dataset()
@@ -513,6 +644,7 @@ def register_vd_callbacks(app):
 						genes.add(gene_name)
 						matched_features_by_gene.setdefault(gene_name, set()).update(matches)
 						features.update(matches)
+						detected_gene_sets.setdefault("Manual Append", set()).add(gene_name)
 					else:
 						not_found.append(query)
 
@@ -524,10 +656,21 @@ def register_vd_callbacks(app):
 					)
 					alert_open = True
 
+		detected_gene_sets = {
+			gene: set(gene_features)
+			for gene, gene_features in detected_gene_sets.items()
+		}
+		detected_gene_sets = {
+			set_name: sorted(set_genes)
+			for set_name, set_genes in sorted(detected_gene_sets.items())
+			if set_genes
+		}
+
 		update_state_store(
 			viral_detection={
 				"viral_genes": ", ".join(sorted(genes)),
 				"viral_features": ", ".join(sorted(features)),
+				"detected_gene_sets": detected_gene_sets,
 				"matched_features_by_gene": {
 					gene: sorted(gene_features)
 					for gene, gene_features in sorted(matched_features_by_gene.items())
@@ -536,7 +679,7 @@ def register_vd_callbacks(app):
 		)
 
 		entries = _build_viral_gene_entries(genes, matched_features_by_gene)
-		list_text = ", ".join([entry["label"] for entry in entries]) if entries else "No viral genes currently selected."
+		list_text = _format_detected_grouped_list(detected_gene_sets, "No viral genes currently selected.")
 
 		return (
 			entries,
@@ -545,4 +688,5 @@ def register_vd_callbacks(app):
 			str(len(genes)),
 			alert_text,
 			alert_open,
+			_build_gene_options(genes),
 		)

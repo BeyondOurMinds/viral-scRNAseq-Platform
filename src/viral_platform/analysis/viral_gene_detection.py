@@ -1,8 +1,10 @@
 import re
+from pathlib import Path
 
 from viral_platform.state.dataset_store import get_dataset
 
-viral_sets_path = "src/viral_platform/viral_gene_sets/"
+
+VIRAL_SETS_PATH = Path("src/viral_platform/viral_gene_sets")
 
 
 # def normalize_gene_name(gene):
@@ -93,6 +95,28 @@ def normalize_gene_name(gene, viral_names=None):
     return gene
 
 
+def list_viral_gene_sets():
+    """List all available viral gene set files.
+
+    Use:
+    - Drives dropdown options and auto-detection set iteration.
+
+    Interacts with:
+    - find_viral_genes, register_vd_callbacks.
+
+    Inputs:
+    - None.
+
+    Outputs:
+    - list[str]: file stems for *.txt files in VIRAL_SETS_PATH.
+    """
+
+    if not VIRAL_SETS_PATH.exists():
+        return []
+
+    return sorted(path.stem for path in VIRAL_SETS_PATH.glob("*.txt"))
+
+
 def load_viral_gene_set(virus):
     """
     Load one viral gene set file into a synonym set.
@@ -111,8 +135,9 @@ def load_viral_gene_set(virus):
     """
 
     viral_names = set()
+    viral_file = VIRAL_SETS_PATH / f"{virus}.txt"
 
-    with open(f"{viral_sets_path}{virus}.txt") as f:
+    with viral_file.open() as f:
         for line in f:
 
             synonyms = [
@@ -144,46 +169,18 @@ def find_viral_genes(value):
 
     adata = get_dataset()
 
+    available_sets = list_viral_gene_sets()
     detected = {
-        "EBV": {
+        virus: {
             "features": set(),
             "genes": set(),
             "matched_features_by_gene": {},
-        },
-        "HIV": {
-            "features": set(),
-            "genes": set(),
-            "matched_features_by_gene": {},
-        },
-        "SARS-CoV-2": {
-            "features": set(),
-            "genes": set(),
-            "matched_features_by_gene": {},
-        },
-        "InfluenzaA": {
-            "features": set(),
-            "genes": set(),
-            "matched_features_by_gene": {},
-        },
-        "InfluenzaB": {
-            "features": set(),
-            "genes": set(),
-            "matched_features_by_gene": {},
-        },
-        "RSV": {
-            "features": set(),
-            "genes": set(),
-            "matched_features_by_gene": {},
-        },
-        "Zika": {
-            "features": set(),
-            "genes": set(),
-            "matched_features_by_gene": {},
-        },
+        }
+        for virus in available_sets
     }
 
     viruses = (
-        detected.keys()
+        available_sets
         if value == "__auto__"
         else [value]
     )
@@ -231,7 +228,14 @@ def find_viral_genes(value):
     if value == "__auto__":
         return detected
 
-    return detected[value]
+    return detected.get(
+        value,
+        {
+            "features": [],
+            "genes": [],
+            "matched_features_by_gene": {},
+        },
+    )
 
 def find_custom_viral_genes(custom_gene_list):
     """
