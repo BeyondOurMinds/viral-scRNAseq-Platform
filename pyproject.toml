@@ -1,7 +1,7 @@
 [project]
 name = "viralviewer"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies=[
     "pandas>=3.0,<4",
     "numpy>=2,<3",
@@ -11,7 +11,8 @@ dependencies=[
     "dash-uploader>=0.6.1",
     "decoupler>=2.0.0",
     "pydeseq2>=0.5.0,<0.6",
-    "anndata>=0.12.0,<0.13"
+    "anndata>=0.12.0,<0.13",
+    "liana>=1.8.0,<2.0.0"
 ]
 readme = "README.md"
 authors = [
