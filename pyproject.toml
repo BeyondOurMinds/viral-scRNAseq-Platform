@@ -3,7 +3,7 @@ name = "viralviewer"
 version = "0.1.0"
 requires-python = ">=3.12,<3.14"
 dependencies=[
-    "pandas>=3.0,<4",
+    "pandas>=2.2,<3",
     "numpy>=2,<3",
     "dash>=4,<5",
     "scanpy[leiden]>=1.11.0",

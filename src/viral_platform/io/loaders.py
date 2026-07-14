@@ -59,6 +59,7 @@ def _postprocess_loaded_adata(adata, sample_count=None):
     result = find_raw_count_matrix(adata)
     if result["found"]:
         raw_counts = get_raw_count_matrix(adata, result["location"])
+        logger.info("Raw count matrix found at '%s'. Preserving in adata.layers['counts'].", result["location"])
 
         adata.layers["counts"] = raw_counts.copy()
     else:
