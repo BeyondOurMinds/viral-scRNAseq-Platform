@@ -7,6 +7,7 @@ from .viral_detection_callbacks import register_vd_callbacks
 from .viral_burden_callbacks import register_viral_burden_callbacks
 from .isg_callbacks import register_isg_callbacks
 from .host_virus_interaction_callbacks import register_host_virus_interaction_callbacks
+from .ccc_callbacks import register_ccc_callbacks
 
 __all__ = [
 	"register_sidebar_callbacks",
@@ -18,4 +19,5 @@ __all__ = [
 	"register_viral_burden_callbacks",
 	"register_isg_callbacks",
 	"register_host_virus_interaction_callbacks",
+	"register_ccc_callbacks",
 ]

@@ -11,6 +11,188 @@ def create_CCC_panel():
             "margin": "0 0 20px 0",
         },
         children=[
+            # title and run button
+            dbc.Row([
+                dbc.Col(
+                    html.Div(
+                        [
+                            html.H4(
+                                ["1. Cell-Cell Communication Analysis"],
+                                style={"display": "inline-flex", "alignItems": "center", "marginBottom": "2px"},
+                            ),
+                            html.P(
+                                "Identify cell-cell communication interactions",
+                                style={"color": "#6c757d", "marginBottom": "16px", "fontSize": "14px"},
+                            ),
+                        ]
+                    ),
+                ),
+                dbc.Col(
+                    dbc.Button("Run Cell-Cell Communication", id="run-ccc-button", n_clicks=0, color="primary", className="mb-3"),
+                    width="auto"
+                )
+            ]),
+
+            # parameter selection
+            dbc.Row([
+                dbc.Col(
+                    dcc.Dropdown(
+                        id="ccc-grouping-dropdown",
+                        options=[
+                            {"label": "Upload a dataset to select grouping variable", "value": ""},
+                        ],
+                        placeholder="Select Grouping Variable",
+                        searchable=True,
+                    )
+                ),
+                dbc.Col(
+                    dcc.Dropdown(
+                        id="ccc-method-dropdown",
+                        options=[
+                            {"label": "Rank Aggregate", "value": "rank_aggregate"},
+                        ],
+                        value="rank_aggregate",
+                        searchable=True,
+                    )
+                ),
+                dbc.Col(
+                    dcc.Dropdown(
+                        id="ccc-resource-dropdown",
+                        options=[
+                            {"label": "Consensus", "value": "consensus"},
+                        ],
+                        value="consensus",
+                        searchable=True,
+                    )
+                ),
+            ]),
+
+            # loading signal
+            dcc.Loading(
+                type="default",
+                children=html.Div(id="ccc-loading-signal", style={"display": "none"}),
+            ),
+
+            # summary table
             
+
+            # output tabs
+            dbc.Tabs(
+                id="ccc-output-tabs",
+                active_tab="ccc-summary-tab",
+                children=[
+                    dbc.Tab(
+                        label="Summary Table",
+                        tab_id="ccc-summary-tab",
+                        children=html.Div(
+                            id="ccc-summary-container",
+                            children=[
+                                html.P(
+                                    "No cell-cell communication results yet. Run the analysis to see results here.",
+                                    style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"},
+                                )
+                            ],
+                        ),
+                    ),
+                    dbc.Tab(
+                        label="Bubble Plot",
+                        tab_id="ccc-bubble-tab",
+                        children=html.Div(
+                            id="ccc-bubble-container",
+                            children=[
+                                dbc.Row([
+                                    dbc.Col(
+                                        html.Div(
+                                            id="ccc-bubble-plot-container",
+                                            children=[
+                                                html.P(
+                                                    "No cell-cell communication results yet. Run the analysis to see results here.",
+                                                    style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"},
+                                                )
+                                            ],
+                                        ),
+                                    )
+                                ]),
+                            ],
+                        ),
+                    ),
+                    dbc.Tab(
+                        label="Network Plot",
+                        tab_id="ccc-network-tab",
+                        children=html.Div(
+                            id="ccc-network-container",
+                            children=[
+                                 dbc.Row([
+                                    dbc.Col(
+                                        html.Div(
+                                            id="ccc-network-plot-container",
+                                            children=[
+                                                html.P(
+                                                    "No cell-cell communication results yet. Run the analysis to see results here.",
+                                                    style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"},
+                                                )
+                                            ],
+                                        ),
+                                    )
+                                ]),
+                            ],
+                        ),
+                    )
+                ]
+            ),
+
+            # Filter Selection
+            dbc.Row([
+
+                dbc.Col(
+                    dcc.Dropdown(
+                        id="ccc-source-filter-dropdown",
+                        options=[
+                            {"label": "All Sources", "value": "_all_"},
+                        ],
+                        placeholder="Filter by Source Cell Type",
+                    )
+                ),
+                dbc.Col(
+                    dcc.Dropdown(
+                        id="ccc-target-filter-dropdown",
+                        options=[
+                            {"label": "All Targets", "value": "_all_"},
+                        ],
+                        placeholder="Filter by Target Cell Type",
+                    )
+                ),
+                dbc.Col(
+                    dcc.Input(
+                        id="ccc-interaction-filter-input",
+                        type="number",
+                        placeholder="Filter by top Interaction",
+                        min=1,
+                        max=10000,
+                        step=1,
+                    )
+                ),
+                dbc.Col(
+                    dbc.Button("Apply Filters", id="ccc-apply-filters-button", n_clicks=0, color="primary", className="mb-3"),
+                    width="auto"
+                ),
+                dbc.Col(
+                    dbc.Button("Reset Filters", id="ccc-reset-filters-button", n_clicks=0, color="secondary", className="mb-3"),
+                    width="auto"
+                ),
+            ]),
+            dbc.Row([
+                dbc.Col(
+                    dcc.Checklist(
+                        id="ccc-show-network-labels",
+                        options=[{"label": "Show Network labels?", "value": True}],
+                        value=[True],
+                        inline=True,
+                        inputStyle={"marginRight": "6px"},
+                        labelStyle={"display": "flex", "alignItems": "center"},
+                    ),
+                    width="auto",
+                ),
+            ])
         ]
     )

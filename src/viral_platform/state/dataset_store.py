@@ -20,6 +20,9 @@ _DEFAULT_HISTORY = {
         "isg_genes": [],
         "isg_features": [],
     },
+    "CCC_results": {
+            "results": None,
+    },
 }
 
 
@@ -46,6 +49,9 @@ def _new_history_state():
         "isg_detection": {
             "isg_genes": [],
             "isg_features": [],
+        },
+        "CCC_results": {
+            "results": None,
         },
     }
 
@@ -153,4 +159,7 @@ def clear_working_dataset():
     history["isg_detection"] = {
         "isg_genes": [],
         "isg_features": [],
+    }
+    history["CCC_results"] = {
+        "results": None,
     }

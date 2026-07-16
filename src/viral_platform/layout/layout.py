@@ -10,6 +10,7 @@ from .DifferentialExpression_panel import create_differential_expression_panel
 from .ViralGeneDetection_panel import create_viral_gene_detection_panel
 from .ISG_panel import create_isg_panel
 from .HostVirusInteraction_panel import create_host_virus_interaction_panel
+from .CellCellCommunication_panel import create_CCC_panel
 import dash_bootstrap_components as dbc
 
 def create_layout():
@@ -53,6 +54,13 @@ def create_layout():
                         create_viral_burden_panel(),
                         create_isg_panel(),
                         create_host_virus_interaction_panel(),
+                    ]),
+                ),
+                dbc.Tab(
+                    label="Cell-Cell Communication",
+                    tab_id="CCC-tab",
+                    children=html.Div([
+                        create_CCC_panel(),
                     ]),
                 ),
             ]

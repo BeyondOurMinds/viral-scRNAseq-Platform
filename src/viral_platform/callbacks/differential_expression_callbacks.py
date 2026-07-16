@@ -31,6 +31,8 @@ def register_differential_expression_callbacks(app):
     @app.callback(
         Output("grouping-variable-dropdown", "options"),
         Output("grouping-variable-dropdown", "value"),
+        Output("ccc-grouping-dropdown", "options"),
+        Output("ccc-grouping-dropdown", "value"),
         Output("celltype-dropdown", "options"),
         Output("celltype-dropdown", "value"),
         Input("active-dataset-version", "data"),
@@ -49,6 +51,8 @@ def register_differential_expression_callbacks(app):
         grouping_options = _build_options(groupable_columns)
         grouping_value = grouping_options[0]["value"] if grouping_options else None
 
+        
+
         cell_types = metadata_info.get("cell_types", [])
         celltype_options = _build_options(cell_types)
         celltype_value = celltype_options[0]["value"] if celltype_options else None
@@ -66,7 +70,11 @@ def register_differential_expression_callbacks(app):
             len(grouping_options),
             len(celltype_options),
         )
-        return grouping_options, grouping_value, celltype_options, celltype_value
+
+        ccc_grouping_options = grouping_options
+        ccc_grouping_value = grouping_value
+        
+        return grouping_options, grouping_value, ccc_grouping_options, ccc_grouping_value, celltype_options, celltype_value
 
     @app.callback(
         Output("group1-dropdown", "options"),
