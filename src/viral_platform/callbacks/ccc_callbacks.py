@@ -116,7 +116,16 @@ def create_network_plot(summary, show_labels=True):
 
     fig = go.Figure()
 
-    colours = px.colors.sequential.Plasma
+    colours = px.colors.sequential.Turbo
+
+    # -----------------------------------
+    # Normalise edge colours
+    # -----------------------------------
+
+    strength = 1 - summary["mean_magnitude"]
+
+    smin = strength.min()
+    smax = strength.max()
 
     # --------------------------------------------------
     # Draw edges
@@ -127,8 +136,26 @@ def create_network_plot(summary, show_labels=True):
         x0, y0 = pos[u]
         x1, y1 = pos[v]
 
+        # -----------------------------------
+        # Normalise colour across this dataset
+        # -----------------------------------
+
+        if smax == smin:
+
+            scaled = 0.5
+
+        else:
+
+            scaled = (
+                data["magnitude"] - smin
+            ) / (
+                smax - smin
+            )
+
+        scaled = max(0, min(1, scaled))
+
         colour_index = int(
-            data["magnitude"] * (len(colours) - 1)
+            scaled * (len(colours) - 1)
         )
 
         hex_colour = colours[colour_index]
@@ -137,7 +164,7 @@ def create_network_plot(summary, show_labels=True):
         g = int(hex_colour[3:5], 16)
         b = int(hex_colour[5:7], 16)
 
-        alpha = 0.25 + 0.5 * data["magnitude"]   # 0.25–0.75
+        alpha = 0.35 + 0.45 * scaled   # 0.25–0.75
 
         colour = f"rgba({r},{g},{b},{alpha:.2f})"
 
@@ -211,7 +238,7 @@ def create_network_plot(summary, show_labels=True):
 
             showarrow=True,
 
-            arrowhead=1,
+            arrowhead=2,
             arrowsize=0.6,
             arrowwidth=max(1.5, edge_width * 0.6),
             arrowcolor=colour,
@@ -305,7 +332,11 @@ def create_network_plot(summary, show_labels=True):
                 showscale=True,
 
                 colorbar=dict(
-                    title="Connectivity"
+
+                    title="Node<br>Connectivity",
+
+                    x=1.02,
+
                 ),
 
                 line=dict(
@@ -353,7 +384,65 @@ def create_network_plot(summary, show_labels=True):
 
 
 
+    # --------------------------------------------------
+    # Dummy trace for edge colourbar
+    # --------------------------------------------------
 
+    fig.add_trace(
+
+        go.Scatter(
+
+            x=[None],
+            y=[None],
+
+            mode="markers",
+
+            marker=dict(
+
+                colorscale="Turbo",
+
+                cmin=smin,
+                cmax=smax,
+
+                color=[smin],
+
+                size=0,
+
+                showscale=True,
+
+                colorbar=dict(
+
+                    title="Edge<br>Strength",
+
+                    tickvals=[
+                        smin,
+                        (smin + smax) / 2,
+                        smax,
+                    ],
+
+                    ticktext=[
+                        "Weak",
+                        "Moderate",
+                        "Strong",
+                    ],
+
+                    thickness=18,
+
+                    len=0.75,
+
+                    x=1.12,
+
+                ),
+
+            ),
+
+            hoverinfo="skip",
+
+            showlegend=False,
+
+        )
+
+    )
     # --------------------------------------------------
     # Layout
     # --------------------------------------------------

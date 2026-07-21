@@ -26,6 +26,16 @@ def _build_options(values):
     return options
 
 
+def _guess_cell_type_columns(groupable_columns):
+    """Find likely cell-type metadata columns from available groupable columns."""
+    matches = []
+    for col in groupable_columns:
+        lowered = str(col).lower()
+        if "cell_type" in lowered or "celltype" in lowered or "cell type" in lowered:
+            matches.append(col)
+    return matches
+
+
 def register_differential_expression_callbacks(app):
     """Register callbacks that keep DE dropdown options synchronized with dataset metadata/state."""
     @app.callback(
@@ -33,6 +43,8 @@ def register_differential_expression_callbacks(app):
         Output("grouping-variable-dropdown", "value"),
         Output("ccc-grouping-dropdown", "options"),
         Output("ccc-grouping-dropdown", "value"),
+        Output("celltype-variable-dropdown", "options"),
+        Output("celltype-variable-dropdown", "value"),
         Output("celltype-dropdown", "options"),
         Output("celltype-dropdown", "value"),
         Input("active-dataset-version", "data"),
@@ -53,28 +65,85 @@ def register_differential_expression_callbacks(app):
 
         
 
-        cell_types = metadata_info.get("cell_types", [])
-        celltype_options = _build_options(cell_types)
-        celltype_value = celltype_options[0]["value"] if celltype_options else None
+        cell_type_columns = metadata_info.get("cell_type_columns", [])
+        if not cell_type_columns:
+            cell_type_columns = _guess_cell_type_columns(groupable_columns)
+
+        celltype_variable_options = _build_options(cell_type_columns)
+        celltype_variable_value = (
+            celltype_variable_options[0]["value"] if celltype_variable_options else None
+        )
+
+        # Values for this dropdown are populated by the celltype-column callback.
+        celltype_options = [{"label": "Select a cell type column to load cell types", "value": ""}]
+        celltype_value = ""
 
         if not grouping_options:
             grouping_options = [{"label": "Upload a dataset to select grouping variable", "value": ""}]
             grouping_value = ""
 
-        if not celltype_options:
-            celltype_options = [{"label": "Upload a dataset to select cell type", "value": ""}]
-            celltype_value = ""
+        if not celltype_variable_options:
+            celltype_variable_options = [
+                {"label": "Upload a dataset to select cell type column", "value": ""}
+            ]
+            celltype_variable_value = ""
 
         logger.info(
-            "Populated DE metadata dropdowns with %s grouping columns and %s cell types.",
+            "Populated DE metadata dropdowns with %s grouping columns and %s cell-type columns.",
             len(grouping_options),
-            len(celltype_options),
+            len(celltype_variable_options),
         )
 
         ccc_grouping_options = grouping_options
         ccc_grouping_value = grouping_value
         
-        return grouping_options, grouping_value, ccc_grouping_options, ccc_grouping_value, celltype_options, celltype_value
+        return (
+            grouping_options,
+            grouping_value,
+            ccc_grouping_options,
+            ccc_grouping_value,
+            celltype_variable_options,
+            celltype_variable_value,
+            celltype_options,
+            celltype_value,
+        )
+
+    @app.callback(
+        Output("celltype-dropdown", "options", allow_duplicate=True),
+        Output("celltype-dropdown", "value", allow_duplicate=True),
+        Input("celltype-variable-dropdown", "value"),
+        Input("active-dataset-version", "data"),
+        prevent_initial_call=True,
+    )
+    def populate_celltype_values(celltype_column, _dataset_version):
+        """Populate cell-type values based on the selected cell-type metadata column."""
+        adata = get_working_dataset()
+        if adata is None:
+            return (
+                [{"label": "Upload a dataset to select cell type", "value": ""}],
+                "",
+            )
+
+        if not celltype_column or celltype_column not in adata.obs.columns:
+            return (
+                [{"label": "Select a cell type column to load cell types", "value": ""}],
+                "",
+            )
+
+        unique_values = adata.obs[celltype_column].dropna().astype(str).unique().tolist()
+        unique_values = [v for v in unique_values if v.strip()]
+        ordered_values = ["All Cells"] + [v for v in unique_values if v.lower() != "all cells"]
+        options = _build_options(ordered_values)
+
+        if not options:
+            return ([{"label": "No cell types found for selected column", "value": ""}], "")
+
+        logger.info(
+            "Populated DE cell-type dropdown for '%s' with %s values.",
+            celltype_column,
+            len(options),
+        )
+        return options, options[0]["value"]
 
     @app.callback(
         Output("group1-dropdown", "options"),
@@ -133,23 +202,30 @@ def register_differential_expression_callbacks(app):
         State("grouping-variable-dropdown", "value"),
         State("group1-dropdown", "value"),
         State("group2-dropdown", "value"),
+        State("celltype-variable-dropdown", "value"),
         State("celltype-dropdown", "value"),
     )
-    def run_DE_analysis(n_clicks, grouping, group1, group2, celltype):
+    def run_DE_analysis(n_clicks, grouping, group1, group2, celltype_column, celltype):
         """Run differential expression analysis when the button is clicked."""
         if n_clicks == 0:
             return "", "Upload a dataset to run differential expression analysis.", "", ""
 
+        adata_for_values = get_working_dataset()
+        if adata_for_values is None:
+            return "Upload a dataset to run differential expression analysis.", "", "", ""
+
+        if not celltype_column or celltype_column not in adata_for_values.obs.columns:
+            return "Select a valid cell type column before running differential expression.", "", "", ""
+
         # Build the analysis target list: a single selected cell type, or every
-        # discovered cell type when the user requests the "All Cells" mode.
+        # value in the selected cell-type column when user selects "All Cells".
         if celltype != "All Cells":
             target_celltypes = [celltype]
         else:
-            state = get_state_store()
-            metadata_info = state.get("metadata_info", {})
             target_celltypes = [
-                ct for ct in metadata_info.get("cell_types", [])
-                if str(ct).strip().lower() != "all cells"
+                ct
+                for ct in adata_for_values.obs[celltype_column].dropna().astype(str).unique().tolist()
+                if str(ct).strip().lower() != "all cells" and str(ct).strip() != ""
             ]
 
         if not target_celltypes:
@@ -166,7 +242,8 @@ def register_differential_expression_callbacks(app):
         # Run the full DE pipeline independently for each target cell type so
         # each section can be rendered as its own collapsible output.
         for ct in target_celltypes:
-            adata = subset_cells(grouping, group1, group2, ct)
+            print(f"Running DE for {ct}")
+            adata = subset_cells(grouping, group1, group2, ct, celltype_column)
             if adata is None:
                 logger.warning("Skipping DE for cell type '%s' due to missing/invalid subset.", ct)
                 continue

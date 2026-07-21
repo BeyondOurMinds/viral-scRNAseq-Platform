@@ -9,7 +9,7 @@ def create_header():
             "textAlign": "center",
         },
         children=[
-            html.H1("Viral Viewer", style={"margin": "0"}),
+            html.H1("SCJoseki", style={"margin": "0", "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "letterSpacing": "1px"}),
             html.P("A platform for analyzing viral single-cell RNA sequencing data", style={"margin": "0"}),
         ],
     )

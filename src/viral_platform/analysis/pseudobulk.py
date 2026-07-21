@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 
-def subset_cells(grouping, group1, group2, celltype="All Cells"):
+def subset_cells(grouping, group1, group2, celltype="All Cells", celltype_column="cell_type"):
     """
     Subset the working dataset based on the selected grouping variable, groups, and cell type.
     
@@ -35,7 +35,10 @@ def subset_cells(grouping, group1, group2, celltype="All Cells"):
     
     # Filter by cell type if provided
     if celltype and celltype != "All Cells":
-        adata = adata[adata.obs['cell_type'] == celltype].copy()
+        if celltype_column not in adata.obs.columns:
+            logger.warning("Cell type column '%s' not found for subsetting.", celltype_column)
+            return None
+        adata = adata[adata.obs[celltype_column].astype(str) == str(celltype)].copy()
     
     #print(adata)
     #print(adata.obs[grouping].value_counts())
@@ -89,6 +92,10 @@ def create_pseudobulk(adata, grouping=None, sample_column="sampleID"):
         logger.warning("Invalid dataset or grouping/sample columns for creating pseudobulk.")
         return None
     
+    # if grouping is None:
+    #     logger.error("Grouping variable is not specified for creating pseudobulk.")
+    #     raise ValueError("Grouping variable must be specified for creating pseudobulk.")
+    
     adata = check_adata_type(adata)
 
     # possibly temp
@@ -103,7 +110,28 @@ def create_pseudobulk(adata, grouping=None, sample_column="sampleID"):
     #print("adata obs shape:",adata.obs.shape)
     # end possible temp code
 
-    padata = dc.pp.pseudobulk(adata, sample_col=sample_column, groups_col=grouping, empty=True)
+    padata = dc.pp.pseudobulk(adata, sample_col=sample_column, groups_col=grouping, empty=False)
+
+    # TEMP
+
+    print("PseudoBulk shape:", padata.shape)
+
+    print("obs")
+    print(padata.obs.head())
+
+    print("var")
+    print(padata.var.head())
+
+    print("X shape")
+    print(padata.X.shape)
+
+    print("obs_names")
+    print(padata.obs_names[:5])
+
+    print("var_names")
+    print(padata.var_names[:5])
+
+    # END TEMP
 
     logger.info("Pseudobulk dataset created with %d groups based on '%s' and '%s'.", padata.n_obs, grouping, sample_column)
 

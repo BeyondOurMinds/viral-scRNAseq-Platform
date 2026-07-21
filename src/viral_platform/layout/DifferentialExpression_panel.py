@@ -45,9 +45,19 @@ def create_differential_expression_panel():
                 ),
                 dbc.Col(
                     dcc.Dropdown(
+                        id="celltype-variable-dropdown",
+                        options=[
+                            {"label": "Upload a dataset to select cell type column", "value": ""},
+                        ],
+                        placeholder="Select Cell Type Column",
+                        searchable=True,
+                    )
+                ),
+                dbc.Col(
+                    dcc.Dropdown(
                         id="celltype-dropdown",
                         options=[
-                            {"label": "Upload a dataset to select cell type", "value": ""},
+                            {"label": "Select a cell type column to load cell types", "value": ""},
                         ],
                         placeholder="Select Cell Type",
                         searchable=True,
