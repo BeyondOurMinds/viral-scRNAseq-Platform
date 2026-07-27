@@ -204,3 +204,22 @@ class ReferenceDatabase:
         files = self.get_files(project_id)
         for file in files:
             self.remove_downloaded_file(project_id, file["file_type"])
+
+    def get_reference_summary(self, project_id: str):
+        """
+        Get a summary of the reference data for a specific project.
+        """
+        project = self.get_project(project_id)
+        file_count = self.cursor.execute(
+            "SELECT COUNT(*) FROM files WHERE project_id = ?",
+            (project_id,)
+        ).fetchone()[0]
+
+        return {
+            "title": project["title"],
+            "virus": project["virus_species"],
+            "disease": project["disease"],
+            "tissue": project["tissue"],
+            "platform": project["platform"],
+            "file_count": file_count
+        }

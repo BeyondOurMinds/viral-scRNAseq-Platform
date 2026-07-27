@@ -58,3 +58,6 @@ class ReferenceManager:
 
     def remove_downloaded_project(self, project_id: str):
         self.database.remove_downloaded_project_files(project_id)
+    
+    def get_reference_summary(self, project_id: str):
+        return self.database.get_reference_summary(project_id)
