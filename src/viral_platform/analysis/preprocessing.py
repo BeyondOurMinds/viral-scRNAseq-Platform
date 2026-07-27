@@ -14,7 +14,15 @@ def preprocess_data():
         sc.pp.normalize_total(adata, target_sum=1e4)
         sc.pp.log1p(adata)
         sc.pp.highly_variable_genes(adata, n_top_genes=2000, subset=True)
+
+        # Preserve log-normalized expression for downstream analyses (e.g. CCC).
+        adata.layers["log_normalized"] = adata.X.copy()
+
         sc.pp.scale(adata, max_value=10)
+
+        # Keep scaled values accessible while PCA/clustering continue to use adata.X.
+        adata.layers["scaled"] = adata.X.copy()
+
         set_working_dataset(adata)
         run_pca()
         logger.info("Preprocessing completed successfully.")

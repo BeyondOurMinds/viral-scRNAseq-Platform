@@ -1,6 +1,17 @@
 import liana as li
 from viral_platform.analysis.normalize_adata_x import ensure_log_normalized_x
 
+
+def _prepare_liana_input(adata):
+    """Build an AnnData copy for LIANA with log-normalized expression in `.X`."""
+    liana_adata = adata.copy()
+
+    if "log_normalized" in adata.layers:
+        liana_adata.X = adata.layers["log_normalized"].copy()
+        return liana_adata
+
+    return ensure_log_normalized_x(liana_adata, inplace=True)
+
 def run_liana(adata, group_by, method="rank_aggregate", resource="consensus"):
     """
     Run LIANA analysis on the provided AnnData object.
@@ -46,9 +57,9 @@ def run_liana(adata, group_by, method="rank_aggregate", resource="consensus"):
     print(f"Cell type column: {group_by}")
     print(f"Cell types: {adata.obs[group_by].unique().tolist()}")
 
-    adata = ensure_log_normalized_x(adata)
-    li.mt.rank_aggregate(adata, groupby=group_by, resource_name=resource, use_raw=False)
-    liana_results = adata.uns["liana_res"]
+    liana_adata = _prepare_liana_input(adata)
+    li.mt.rank_aggregate(liana_adata, groupby=group_by, resource_name=resource, use_raw=False)
+    liana_results = liana_adata.uns["liana_res"]
     
 
     summary = {
