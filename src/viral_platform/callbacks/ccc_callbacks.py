@@ -581,12 +581,14 @@ def register_ccc_callbacks(app):
             y="source",
             size="bubble_size",
             color="bubble_color",
+            labels={"bubble_color": "Interaction strength"},
             hover_data=[
                 "interaction_count",
                 "mean_magnitude",
                 "mean_specificity",
             ],
         )
+        fig.update_coloraxes(colorbar_title_text="Interaction<br>strength")
 
         fig.update_yaxes(categoryorder="category ascending")
         fig.update_layout(
@@ -668,6 +670,7 @@ def register_ccc_callbacks(app):
                 y="interaction",
                 size="bubble_size",
                 color="bubble_color",
+                labels={"bubble_color": "Interaction strength"},
                 hover_data=[
                     "ligand_complex",
                     "receptor_complex",
@@ -675,6 +678,7 @@ def register_ccc_callbacks(app):
                     "specificity_rank",
                 ],
             )
+            fig.update_coloraxes(colorbar_title_text="Interaction<br>strength")
 
             fig.update_traces(
                 marker=dict(sizemode="area")
@@ -691,6 +695,7 @@ def register_ccc_callbacks(app):
                 y="interaction",
                 size="bubble_size",
                 color="bubble_color",
+                labels={"bubble_color": "Interaction strength"},
                 hover_data=[
                     "ligand_complex",
                     "receptor_complex",
@@ -698,6 +703,7 @@ def register_ccc_callbacks(app):
                     "specificity_rank",
                 ],
             )
+            fig.update_coloraxes(colorbar_title_text="Interaction<br>strength")
 
             fig.update_xaxes(autorange="reversed")
 
@@ -755,12 +761,14 @@ def register_ccc_callbacks(app):
             y="source",
             size="bubble_size",
             color="bubble_color",
+            labels={"bubble_color": "Interaction strength"},
             hover_data=[
                 "interaction_count",
                 "mean_magnitude",
                 "mean_specificity",
             ],
         )
+        fig.update_coloraxes(colorbar_title_text="Interaction<br>strength")
 
         fig.update_yaxes(categoryorder="category ascending")
         fig.update_layout(
