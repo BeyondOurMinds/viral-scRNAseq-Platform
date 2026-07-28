@@ -12,6 +12,7 @@ from .ISG_panel import create_isg_panel
 from .HostVirusInteraction_panel import create_host_virus_interaction_panel
 from .CellCellCommunication_panel import create_CCC_panel
 from .scMOVIR_reference_panel import create_scmovir_reference_panel
+from .scMOVIRDownloadManager_panel import create_scmovir_download_manager_panel
 import dash_bootstrap_components as dbc
 
 def create_layout():
@@ -68,7 +69,8 @@ def create_layout():
                     label="SCMOVIR Reference Database",
                     tab_id="SCMOVIR-tab",
                     children=html.Div([
-                        create_scmovir_reference_panel()
+                        create_scmovir_reference_panel(),
+                        create_scmovir_download_manager_panel(),
                     ]),
                 ),
             ]

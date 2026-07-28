@@ -85,6 +85,29 @@ def _read_project_files(project_id):
         db.close()
 
 
+def _read_downloaded_files():
+    db = ReferenceDatabase(_database_path())
+    try:
+        return db.cursor.execute(
+            """
+            SELECT
+                p.project_id,
+                p.accession,
+                f.file_type,
+                f.filename,
+                f.file_size
+            FROM files f
+            JOIN projects p ON p.project_id = f.project_id
+            WHERE f.is_downloaded = 1
+            ORDER BY p.accession, f.file_type
+            """
+        ).fetchall()
+    except sqlite3.Error:
+        return []
+    finally:
+        db.close()
+
+
 def _matches_filters(row, filters):
     for field, expected in filters.items():
         if expected and _normalize_value(row[field]) != expected:
@@ -102,6 +125,22 @@ def _normalize_active_items(active_item):
     if isinstance(active_item, list):
         return active_item
     return [active_item]
+
+
+def _format_file_size(file_size):
+    if file_size is None:
+        return "N/A"
+
+    size = float(file_size)
+    units = ["B", "KB", "MB", "GB", "TB"]
+    unit_idx = 0
+    while size >= 1024 and unit_idx < len(units) - 1:
+        size /= 1024.0
+        unit_idx += 1
+
+    if unit_idx == 0:
+        return f"{int(size)} {units[unit_idx]}"
+    return f"{size:.2f} {units[unit_idx]}"
 
 
 def _project_metadata_box(project):
@@ -184,19 +223,56 @@ def _build_project_item(project):
                         "Download",
                         id={"type": "scmovir-download-button", "project_id": project_id},
                         color="success",
-                        className="me-2",
-                        n_clicks=0,
-                    ),
-                    dbc.Button(
-                        "Remove",
-                        id={"type": "scmovir-remove-button", "project_id": project_id},
-                        color="danger",
                         n_clicks=0,
                     ),
                 ],
                 className="d-flex justify-content-end",
             ),
         ],
+    )
+
+
+def _build_download_manager_table(downloaded_files):
+    rows = []
+    for file_row in downloaded_files:
+        rows.append(
+            html.Tr(
+                [
+                    html.Td(file_row["accession"]),
+                    html.Td(file_row["filename"]),
+                    html.Td(_format_file_size(file_row["file_size"])),
+                    html.Td(
+                        dbc.Checkbox(
+                            id={
+                                "type": "scmovir-manager-file-select",
+                                "project_id": file_row["project_id"],
+                                "file_type": file_row["file_type"],
+                            },
+                            value=False,
+                        )
+                    ),
+                ]
+            )
+        )
+
+    return dbc.Table(
+        [
+            html.Thead(
+                html.Tr(
+                    [
+                        html.Th("Accession"),
+                        html.Th("Project Files"),
+                        html.Th("File Size"),
+                        html.Th("Select"),
+                    ]
+                )
+            ),
+            html.Tbody(rows),
+        ],
+        bordered=True,
+        hover=True,
+        responsive=True,
+        className="mb-0",
     )
 
 
@@ -311,23 +387,34 @@ def register_scmovir_reference_callbacks(app):
         return "", items, open_items
 
     @app.callback(
+        Output("scmovir-download-manager-content", "children"),
+        Input("scmovir-refresh-token", "data"),
+        prevent_initial_call=False,
+    )
+    def render_download_manager(_refresh_token):
+        downloaded_files = _read_downloaded_files()
+        if not downloaded_files:
+            return html.P("No downloaded files yet.", className="mb-0")
+
+        return _build_download_manager_table(downloaded_files)
+
+    @app.callback(
         Output("scmovir-refresh-token", "data"),
         Output("scmovir-reference-feedback", "children", allow_duplicate=True),
         Input({"type": "scmovir-download-button", "project_id": ALL}, "n_clicks"),
-        Input({"type": "scmovir-remove-button", "project_id": ALL}, "n_clicks"),
         State({"type": "scmovir-file-select", "project_id": ALL, "file_type": ALL}, "value"),
         State({"type": "scmovir-file-select", "project_id": ALL, "file_type": ALL}, "id"),
         State("scmovir-refresh-token", "data"),
         prevent_initial_call=True,
     )
-    def update_project_files(_download_clicks, _remove_clicks, selected_values, selected_ids, refresh_token):
+    def download_selected_project_files(_download_clicks, selected_values, selected_ids, refresh_token):
         trigger = ctx.triggered_id
         if not isinstance(trigger, dict):
             raise PreventUpdate
 
         project_id = trigger.get("project_id")
         trigger_type = trigger.get("type")
-        if not project_id or trigger_type not in {"scmovir-download-button", "scmovir-remove-button"}:
+        if not project_id or trigger_type != "scmovir-download-button":
             raise PreventUpdate
 
         selected_file_types = [
@@ -342,20 +429,49 @@ def register_scmovir_reference_callbacks(app):
         db = ReferenceDatabase(_database_path())
         manager = ReferenceManager(db)
         try:
-            if trigger_type == "scmovir-download-button":
-                success_count = 0
-                for file_type in selected_file_types:
-                    if manager.download_file(project_id, file_type):
-                        success_count += 1
-                message = f"Downloaded {success_count}/{len(selected_file_types)} selected file(s)."
-                color = "success" if success_count else "danger"
-            else:
-                for file_type in selected_file_types:
-                    manager.remove_downloaded_file(project_id, file_type)
-                message = f"Removed {len(selected_file_types)} selected file(s)."
-                color = "secondary"
+            success_count = 0
+            for file_type in selected_file_types:
+                if manager.download_file(project_id, file_type):
+                    success_count += 1
+            message = f"Downloaded {success_count}/{len(selected_file_types)} selected file(s)."
+            color = "success" if success_count else "danger"
         finally:
             db.close()
 
         next_token = (refresh_token or 0) + 1
         return next_token, dbc.Alert(message, color=color, className="mt-2 mb-0")
+
+    @app.callback(
+        Output("scmovir-refresh-token", "data", allow_duplicate=True),
+        Output("scmovir-download-manager-feedback", "children"),
+        Input("scmovir-manager-remove-button", "n_clicks"),
+        State({"type": "scmovir-manager-file-select", "project_id": ALL, "file_type": ALL}, "value"),
+        State({"type": "scmovir-manager-file-select", "project_id": ALL, "file_type": ALL}, "id"),
+        State("scmovir-refresh-token", "data"),
+        prevent_initial_call=True,
+    )
+    def remove_selected_downloaded_files(n_clicks, selected_values, selected_ids, refresh_token):
+        if not n_clicks:
+            raise PreventUpdate
+
+        selected_file_ids = [
+            checkbox_id
+            for checkbox_id, is_selected in zip(selected_ids, selected_values)
+            if bool(is_selected)
+        ]
+
+        if not selected_file_ids:
+            return refresh_token, dbc.Alert("Select at least one downloaded file to remove.", color="warning", className="mb-0")
+
+        db = ReferenceDatabase(_database_path())
+        manager = ReferenceManager(db)
+        removed_count = 0
+        try:
+            for file_id in selected_file_ids:
+                manager.remove_downloaded_file(file_id["project_id"], file_id["file_type"])
+                removed_count += 1
+        finally:
+            db.close()
+
+        next_token = (refresh_token or 0) + 1
+        return next_token, dbc.Alert(f"Removed {removed_count} downloaded file(s).", color="secondary", className="mb-0")
