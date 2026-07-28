@@ -1,4 +1,4 @@
-from dash import Input, Output, State, dash_table, html, no_update
+from dash import Input, Output, dash_table, html, no_update
 import dash_bootstrap_components as dbc
 from viral_platform.analysis.viral_burden_associations import calculate_viral_burden_associations, identify_significant_associations
 from viral_platform.state.dataset_store import get_working_dataset, get_state_store, set_working_dataset, sync_state_with_dataset

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 
-from dash import Input, Output, State, html, no_update, dash_table, dcc
+from dash import Input, Output, State, html, dash_table, dcc
 import dash_bootstrap_components as dbc
 
 from viral_platform.state.dataset_store import get_state_store, get_working_dataset, reset_state_store

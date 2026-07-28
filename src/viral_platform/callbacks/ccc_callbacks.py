@@ -1,6 +1,5 @@
 from dash import Input, Output, State, dash_table, html, no_update, dcc
-import dash_bootstrap_components as dbc
-from viral_platform.state.dataset_store import get_working_dataset, get_state_store, set_working_dataset, sync_state_with_dataset, update_state_store
+from viral_platform.state.dataset_store import get_working_dataset, get_state_store, update_state_store
 from viral_platform.analysis.CellCellLIANA import run_liana, filter_liana_results, liana_output_table, summarise_celltype_interactions
 import logging
 import plotly.express as px

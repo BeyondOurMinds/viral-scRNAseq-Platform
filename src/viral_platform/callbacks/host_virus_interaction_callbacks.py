@@ -1,9 +1,8 @@
-from dash import Input, Output, State, dash_table, html, no_update, dcc
+from dash import Input, Output, State, dash_table, html, no_update
 import dash_bootstrap_components as dbc
-from viral_platform.state.dataset_store import get_working_dataset, get_state_store, set_working_dataset, sync_state_with_dataset
+from viral_platform.state.dataset_store import get_working_dataset, get_state_store
 from viral_platform.analysis.host_virus_interaction import host_virus_interaction, get_features_for_gene
 import logging
-import numpy as np
 
 
 logger = logging.getLogger(__name__)
