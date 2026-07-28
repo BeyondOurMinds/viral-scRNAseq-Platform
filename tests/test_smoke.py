@@ -26,7 +26,9 @@ def test_prefixed_10x_discovery_accepts_counts_matrix(tmp_path, monkeypatch):
 
     class DummyAnnData:
         def __init__(self):
+            import pandas as pd
             self.uns = {}
+            self.obs = pd.DataFrame(index=["cell_1"])
 
     def fake_load_prefixed_10x_sample(matrix_path):
         loaded_paths.append(matrix_path.name)
