@@ -127,6 +127,9 @@ class ReferenceDatabase:
         ).fetchone()
     
     def get_files(self, project_id):
+        """
+        Get all files associated with a specific project.
+        """
 
         return self.cursor.execute(
             """
@@ -138,6 +141,9 @@ class ReferenceDatabase:
         ).fetchall()
     
     def update_file_download_status(self, project_id, file_type, is_downloaded):
+        """
+        Update the download status for a specific file in the database.
+        """
 
         self.cursor.execute(
             """
@@ -151,6 +157,9 @@ class ReferenceDatabase:
         self.connection.commit()
     
     def update_file_size(self, project_id, file_type, file_size):
+        """
+        Update the file size for a specific file in the database.
+        """
 
         self.cursor.execute(
             """
@@ -164,6 +173,10 @@ class ReferenceDatabase:
         self.connection.commit()
     
     def search_projects(self, virus_species: str = None, disease: str = None, tissue: str = None, platform: str = None):
+        """
+        Search for projects based on virus species, disease, tissue, and platform.
+        Returns a list of matching projects.
+        """
         query = "SELECT * FROM projects WHERE 1=1"
         params = []
 

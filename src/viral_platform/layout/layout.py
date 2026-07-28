@@ -11,6 +11,7 @@ from .ViralGeneDetection_panel import create_viral_gene_detection_panel
 from .ISG_panel import create_isg_panel
 from .HostVirusInteraction_panel import create_host_virus_interaction_panel
 from .CellCellCommunication_panel import create_CCC_panel
+from .scMOVIR_reference_panel import create_scmovir_reference_panel
 import dash_bootstrap_components as dbc
 
 def create_layout():
@@ -61,6 +62,13 @@ def create_layout():
                     tab_id="CCC-tab",
                     children=html.Div([
                         create_CCC_panel(),
+                    ]),
+                ),
+                dbc.Tab(
+                    label="SCMOVIR Reference Database",
+                    tab_id="SCMOVIR-tab",
+                    children=html.Div([
+                        create_scmovir_reference_panel()
                     ]),
                 ),
             ]
