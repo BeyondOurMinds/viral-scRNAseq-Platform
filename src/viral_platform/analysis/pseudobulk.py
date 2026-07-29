@@ -2,39 +2,9 @@ from viral_platform.state.dataset_store import get_dataset, get_state_store
 import logging
 import decoupler as dc
 from anndata import AnnData
+from viral_platform.utils.sample_column_utils import resolve_sample_column
 
 logger = logging.getLogger(__name__)
-
-
-def _normalize_column_name(value):
-    """Normalize metadata column names for tolerant matching."""
-    return "".join(ch for ch in str(value).lower() if ch.isalnum())
-
-
-def _resolve_sample_column(columns, metadata_sample_columns=None):
-    """Find likely sample ID column names, preferring metadata-discovered sample columns."""
-    normalized_to_original = {_normalize_column_name(col): col for col in list(columns)}
-
-    # Prefer metadata-discovered sample columns from metadata discovery.
-    if metadata_sample_columns:
-        for candidate in metadata_sample_columns:
-            normalized_candidate = _normalize_column_name(candidate)
-            if normalized_candidate in normalized_to_original:
-                return normalized_to_original[normalized_candidate]
-
-    if "sampleid" in normalized_to_original:
-        return normalized_to_original["sampleid"]
-
-    for normalized_name, original_name in normalized_to_original.items():
-        if "sampleid" in normalized_name:
-            return original_name
-
-    for normalized_name, original_name in normalized_to_original.items():
-        if normalized_name.startswith("sample"):
-            return original_name
-
-    return None
-
 
 
 def subset_cells(grouping, group1, group2, celltype="All Cells", celltype_column="cell_type"):
@@ -95,9 +65,10 @@ def find_biological_replicates(adata, grouping):
     metadata_info = state.get("metadata_info", {})
     metadata_sample_columns = metadata_info.get("sample_columns", [])
 
-    sample_column = _resolve_sample_column(
+    sample_column = resolve_sample_column(
         adata.obs.columns,
         metadata_sample_columns=metadata_sample_columns,
+        obs_df=adata.obs,
     )
     if sample_column is None:
         logger.warning(
@@ -140,9 +111,10 @@ def create_pseudobulk(adata, grouping=None, sample_column="sampleID"):
         metadata_info = state.get("metadata_info", {})
         metadata_sample_columns = metadata_info.get("sample_columns", [])
 
-        resolved_sample_column = _resolve_sample_column(
+        resolved_sample_column = resolve_sample_column(
             adata.obs.columns,
             metadata_sample_columns=metadata_sample_columns,
+            obs_df=adata.obs,
         )
         if resolved_sample_column is None:
             logger.warning(

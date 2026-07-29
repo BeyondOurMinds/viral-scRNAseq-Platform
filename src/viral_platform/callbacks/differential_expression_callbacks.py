@@ -10,8 +10,11 @@ import dash_bootstrap_components as dbc
 from viral_platform.state.dataset_store import get_state_store, get_working_dataset, reset_state_store
 from viral_platform.analysis.pseudobulk import subset_cells
 from viral_platform.analysis.differential_expression import run_differential_expression
+from viral_platform.utils.sample_column_utils import resolve_sample_column
 
 logger = logging.getLogger(__name__)
+
+MAX_DROPDOWN_CATEGORY_VALUES = 500
 
 
 def _build_options(values):
@@ -37,29 +40,24 @@ def _guess_cell_type_columns(groupable_columns):
     return matches
 
 
-def _normalize_column_name(value):
-    """Normalize a column name for tolerant comparisons."""
-    return "".join(ch for ch in str(value).lower() if ch.isalnum())
+def _normalize_de_result_gene_column(df, celltype_label):
+    """Normalize DE result gene identifier column names to a single 'gene' field."""
+    if "gene" in df.columns:
+        return df
 
+    rename_candidates = ("var_names", "index", "gene_name", "names")
+    for candidate in rename_candidates:
+        if candidate in df.columns:
+            print(
+                f"[DE heatmap debug] celltype={celltype_label} using '{candidate}' as gene column"
+            )
+            return df.rename(columns={candidate: "gene"})
 
-def _find_sample_id_column(columns, metadata_sample_columns=None):
-    """Resolve sample-ID column, preferring metadata-discovered sample columns."""
-    normalized_to_original = {_normalize_column_name(col): col for col in list(columns)}
-
-    if metadata_sample_columns:
-        for candidate in metadata_sample_columns:
-            normalized_candidate = _normalize_column_name(candidate)
-            if normalized_candidate in normalized_to_original:
-                return normalized_to_original[normalized_candidate]
-
-    if "sampleid" in normalized_to_original:
-        return normalized_to_original["sampleid"]
-
-    for normalized_name, original_name in normalized_to_original.items():
-        if "sampleid" in normalized_name:
-            return original_name
-
-    return None
+    print(
+        f"[DE heatmap debug] celltype={celltype_label} no recognizable gene column; "
+        f"available={list(df.columns)}"
+    )
+    return df
 
 
 def register_differential_expression_callbacks(app):
@@ -94,9 +92,13 @@ def register_differential_expression_callbacks(app):
         # Allow any groupable metadata column to be used as the cell-type field.
         # Some datasets use non-standard names for cell type annotations.
         celltype_variable_options = _build_options(groupable_columns)
-        celltype_variable_value = (
-            celltype_variable_options[0]["value"] if celltype_variable_options else None
-        )
+        likely_celltype_columns = _guess_cell_type_columns(groupable_columns)
+        if likely_celltype_columns:
+            celltype_variable_value = str(likely_celltype_columns[0])
+        else:
+            celltype_variable_value = (
+                celltype_variable_options[0]["value"] if celltype_variable_options else None
+            )
 
         # Values for this dropdown are populated by the celltype-column callback.
         celltype_options = [{"label": "Select a cell type column to load cell types", "value": ""}]
@@ -156,6 +158,25 @@ def register_differential_expression_callbacks(app):
 
         unique_values = adata.obs[celltype_column].dropna().astype(str).unique().tolist()
         unique_values = [v for v in unique_values if v.strip()]
+
+        if len(unique_values) > MAX_DROPDOWN_CATEGORY_VALUES:
+            logger.warning(
+                "Skipping DE cell-type option expansion for '%s': %d values exceed max %d.",
+                celltype_column,
+                len(unique_values),
+                MAX_DROPDOWN_CATEGORY_VALUES,
+            )
+            return (
+                [{
+                    "label": (
+                        f"Selected column has {len(unique_values)} distinct values. "
+                        "Choose a lower-cardinality annotation column."
+                    ),
+                    "value": "",
+                }],
+                "",
+            )
+
         ordered_values = ["All Cells"] + [v for v in unique_values if v.lower() != "all cells"]
         options = _build_options(ordered_values)
 
@@ -197,6 +218,24 @@ def register_differential_expression_callbacks(app):
             )
 
         unique_values = adata.obs[grouping_column].dropna().astype(str).unique().tolist()
+        unique_values = [v for v in unique_values if v.strip()]
+
+        if len(unique_values) > MAX_DROPDOWN_CATEGORY_VALUES:
+            logger.warning(
+                "Skipping DE group option expansion for '%s': %d values exceed max %d.",
+                grouping_column,
+                len(unique_values),
+                MAX_DROPDOWN_CATEGORY_VALUES,
+            )
+            warning_option = [{
+                "label": (
+                    f"Selected column has {len(unique_values)} distinct values. "
+                    "Choose a lower-cardinality grouping column."
+                ),
+                "value": "",
+            }]
+            return warning_option, "", warning_option, ""
+
         options = _build_options(unique_values)
 
         if not options:
@@ -286,9 +325,10 @@ def register_differential_expression_callbacks(app):
             completed += 1
 
             if grouping in adata.obs.columns:
-                sample_id_col = _find_sample_id_column(
+                sample_id_col = resolve_sample_column(
                     adata.obs.columns,
                     metadata_sample_columns=metadata_sample_columns,
+                    obs_df=adata.obs,
                 )
                 if sample_id_col is not None:
                     group1_n = adata.obs[adata.obs[grouping] == group1][sample_id_col].nunique()
@@ -360,9 +400,10 @@ def register_differential_expression_callbacks(app):
             # Build a volcano plot for this cell type using DE outputs.
             volcano_content = html.Div(f"Volcano plot for {ct} is not available.")
             if hasattr(results, "reset_index"):
-                volcano_df = results.reset_index().copy()
-                if "index" in volcano_df.columns:
-                    volcano_df = volcano_df.rename(columns={"index": "gene"})
+                volcano_df = _normalize_de_result_gene_column(
+                    results.reset_index().copy(),
+                    ct,
+                )
 
                 volcano_df["log2FoldChange"] = pd.to_numeric(volcano_df.get("log2FoldChange"), errors="coerce")
                 volcano_df["padj"] = pd.to_numeric(volcano_df.get("padj"), errors="coerce")
@@ -416,9 +457,10 @@ def register_differential_expression_callbacks(app):
             # Build a top-20 DE gene heatmap for this cell type.
             heatmap_content = html.Div(f"Heatmap for {ct} is not available.")
             if hasattr(results, "reset_index"):
-                heatmap_df = results.reset_index().copy()
-                if "index" in heatmap_df.columns:
-                    heatmap_df = heatmap_df.rename(columns={"index": "gene"})
+                heatmap_df = _normalize_de_result_gene_column(
+                    results.reset_index().copy(),
+                    ct,
+                )
 
                 if "gene" in heatmap_df.columns and "padj" in heatmap_df.columns:
                     heatmap_df["padj"] = pd.to_numeric(heatmap_df["padj"], errors="coerce")
@@ -437,10 +479,22 @@ def register_differential_expression_callbacks(app):
                         ["padj", "abs_log2fc"], ascending=[True, False]
                     )
                     top_genes = top_genes_df["gene"].astype(str).tolist()[:20]
+                    print(
+                        f"[DE heatmap debug] celltype={ct} total_de_rows={len(heatmap_df)} "
+                        f"candidate_top_genes={len(top_genes)}"
+                    )
 
                     available_top_genes = [g for g in top_genes if g in adata.var_names]
+                    print(
+                        f"[DE heatmap debug] celltype={ct} genes_in_adata={len(available_top_genes)} "
+                        f"grouping_present={grouping in adata.obs.columns}"
+                    )
                     if available_top_genes and grouping in adata.obs.columns:
                         heatmap_subset = adata[:, available_top_genes].copy()
+                        print(
+                            f"[DE heatmap debug] celltype={ct} heatmap_subset_shape="
+                            f"{heatmap_subset.n_obs}x{heatmap_subset.n_vars}"
+                        )
 
                         if issparse(heatmap_subset.X):
                             heatmap_values = heatmap_subset.X.toarray()
@@ -487,6 +541,28 @@ def register_differential_expression_callbacks(app):
                         )
                         heatmap_fig.update_layout(xaxis_tickangle=45)
                         heatmap_content = dcc.Graph(figure=heatmap_fig)
+                        print(f"[DE heatmap debug] celltype={ct} heatmap_rendered=True")
+                    else:
+                        if not available_top_genes:
+                            print(
+                                f"[DE heatmap debug] celltype={ct} heatmap skipped: "
+                                "no top genes overlap adata.var_names"
+                            )
+                        if grouping not in adata.obs.columns:
+                            print(
+                                f"[DE heatmap debug] celltype={ct} heatmap skipped: "
+                                f"grouping column '{grouping}' missing in pseudobulk obs"
+                            )
+                else:
+                    print(
+                        f"[DE heatmap debug] celltype={ct} heatmap skipped: "
+                        f"required columns missing, found={list(heatmap_df.columns)}"
+                    )
+            else:
+                print(
+                    f"[DE heatmap debug] celltype={ct} heatmap skipped: "
+                    f"results object has no reset_index (type={type(results)})"
+                )
 
             heatmap_items.append(
                 dbc.AccordionItem(

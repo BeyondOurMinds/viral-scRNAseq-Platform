@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import logging
+from viral_platform.utils.sample_column_utils import normalize_column_name, resolve_sample_column
 
 logger = logging.getLogger(__name__)
 
@@ -23,24 +24,19 @@ def _build_options(values):
     return options
 
 
-def _normalize_column_name(value):
-    """Normalize metadata column names for tolerant matching."""
-    return "".join(ch for ch in str(value).lower() if ch.isalnum())
-
-
 def _resolve_column(columns, priority_names, contains_names=None):
     """Resolve a metadata column using exact normalized names then contains checks."""
     contains_names = contains_names or []
-    normalized_to_original = {_normalize_column_name(col): col for col in list(columns)}
+    normalized_to_original = {normalize_column_name(col): col for col in list(columns)}
 
     for name in priority_names:
-        normalized = _normalize_column_name(name)
+        normalized = normalize_column_name(name)
         if normalized in normalized_to_original:
             return normalized_to_original[normalized]
 
     for normalized_col, original_col in normalized_to_original.items():
         for token in contains_names:
-            normalized_token = _normalize_column_name(token)
+            normalized_token = normalize_column_name(token)
             if normalized_token and normalized_token in normalized_col:
                 return original_col
 
@@ -62,23 +58,6 @@ def _resolve_condition_column(columns):
         columns,
         priority_names=["condition", "group", "status", "disease", "treatment"],
         contains_names=["condition", "group", "status", "disease", "treat"],
-    )
-
-
-def _resolve_sample_column(columns, metadata_sample_columns=None):
-    """Resolve the most likely sample identifier column."""
-    metadata_sample_columns = metadata_sample_columns or []
-    normalized_to_original = {_normalize_column_name(col): col for col in list(columns)}
-
-    for candidate in metadata_sample_columns:
-        normalized_candidate = _normalize_column_name(candidate)
-        if normalized_candidate in normalized_to_original:
-            return normalized_to_original[normalized_candidate]
-
-    return _resolve_column(
-        columns,
-        priority_names=["sampleID", "sample_id", "sample"],
-        contains_names=["sampleid", "sample_id", "sample"],
     )
 
 
@@ -188,7 +167,11 @@ def _build_violin_plots(
     if condition_col is None:
         condition_col = _resolve_condition_column(obs.columns)
     if sample_col is None:
-        sample_col = _resolve_sample_column(obs.columns, metadata_sample_columns=metadata_sample_columns)
+        sample_col = resolve_sample_column(
+            obs.columns,
+            metadata_sample_columns=metadata_sample_columns,
+            obs_df=obs,
+        )
 
     sections = []
 
@@ -315,7 +298,13 @@ def register_viral_burden_callbacks(app):
 
         default_celltype = _resolve_celltype_column(groupable_columns)
         default_condition = _resolve_condition_column(groupable_columns)
-        default_sample = _resolve_sample_column(sample_candidates, metadata_sample_columns=metadata_sample_columns)
+        adata = get_working_dataset()
+        obs_df = adata.obs if adata is not None else None
+        default_sample = resolve_sample_column(
+            sample_candidates,
+            metadata_sample_columns=metadata_sample_columns,
+            obs_df=obs_df,
+        )
 
         if not celltype_options:
             celltype_options = [{"label": "Upload a dataset to select cell type column", "value": ""}]
@@ -332,7 +321,13 @@ def register_viral_burden_callbacks(app):
         if default_condition not in {opt["value"] for opt in condition_options}:
             default_condition = condition_options[0]["value"] if condition_options else ""
         if default_sample not in {opt["value"] for opt in sample_options}:
-            default_sample = sample_options[0]["value"] if sample_options else ""
+            default_sample = ""
+
+        if sample_options and default_sample == "":
+            sample_options = [{
+                "label": "No confident sample ID detected automatically. Please choose a sample column.",
+                "value": "",
+            }] + [opt for opt in sample_options if opt.get("value") != ""]
 
         return (
             celltype_options,
@@ -468,9 +463,10 @@ def register_viral_burden_callbacks(app):
         sample_col = (
             selected_sample_column
             if selected_sample_column and selected_sample_column in adata.obs.columns
-            else _resolve_sample_column(
+            else resolve_sample_column(
                 adata.obs.columns,
                 metadata_sample_columns=metadata_sample_columns,
+                obs_df=adata.obs,
             )
         )
 

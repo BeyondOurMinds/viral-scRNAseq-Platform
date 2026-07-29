@@ -9,6 +9,8 @@ import networkx as nx
 
 logger = logging.getLogger(__name__)
 
+MAX_DROPDOWN_CATEGORY_VALUES = 500
+
 def make_sortable_table(df, table_id):
     """Create a sortable Dash DataTable from a DataFrame."""
     return dash_table.DataTable(
@@ -502,6 +504,24 @@ def register_ccc_callbacks(app):
             )
 
         unique_values = adata.obs[grouping_column].dropna().astype(str).unique().tolist()
+        unique_values = [v for v in unique_values if v.strip()]
+
+        if len(unique_values) > MAX_DROPDOWN_CATEGORY_VALUES:
+            logger.warning(
+                "Skipping CCC source/target option expansion for '%s': %d values exceed max %d.",
+                grouping_column,
+                len(unique_values),
+                MAX_DROPDOWN_CATEGORY_VALUES,
+            )
+            warning_option = [{
+                "label": (
+                    f"Selected column has {len(unique_values)} distinct values. "
+                    "Choose a lower-cardinality grouping column."
+                ),
+                "value": "",
+            }]
+            return warning_option, "", warning_option, ""
+
         options = _build_options(unique_values)
 
         if not options:
