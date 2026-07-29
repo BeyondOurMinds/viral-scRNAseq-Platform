@@ -2,6 +2,7 @@ import logging
 import numpy as np
 import pandas as pd
 import plotly.express as px
+from scipy.sparse import issparse
 
 from dash import Input, Output, State, html, dash_table, dcc
 import dash_bootstrap_components as dbc
@@ -221,6 +222,7 @@ def register_differential_expression_callbacks(app):
         Output("pseudobulk-container", "children"),
         Output("de-table-container", "children"),
         Output("volcano-plot-container", "children"),
+        Output("de-heatmap-container", "children"),
         Input("run-differential-expression-analysis-button", "n_clicks"),
         State("grouping-variable-dropdown", "value"),
         State("group1-dropdown", "value"),
@@ -231,14 +233,14 @@ def register_differential_expression_callbacks(app):
     def run_DE_analysis(n_clicks, grouping, group1, group2, celltype_column, celltype):
         """Run differential expression analysis when the button is clicked."""
         if n_clicks == 0:
-            return "", "Upload a dataset to run differential expression analysis.", "", ""
+            return "", "Upload a dataset to run differential expression analysis.", "", "", ""
 
         adata_for_values = get_working_dataset()
         if adata_for_values is None:
-            return "Upload a dataset to run differential expression analysis.", "", "", ""
+            return "Upload a dataset to run differential expression analysis.", "", "", "", ""
 
         if not celltype_column or celltype_column not in adata_for_values.obs.columns:
-            return "Select a valid cell type column before running differential expression.", "", "", ""
+            return "Select a valid cell type column before running differential expression.", "", "", "", ""
 
         # Build the analysis target list: a single selected cell type, or every
         # value in the selected cell-type column when user selects "All Cells".
@@ -252,7 +254,7 @@ def register_differential_expression_callbacks(app):
             ]
 
         if not target_celltypes:
-            return "No cell types available for differential expression analysis.", "", "", ""
+            return "No cell types available for differential expression analysis.", "", "", "", ""
 
         # Keep unique order in case metadata_info has duplicates.
         target_celltypes = list(dict.fromkeys(target_celltypes))
@@ -264,6 +266,7 @@ def register_differential_expression_callbacks(app):
         pseudobulk_items = []
         de_items = []
         volcano_items = []
+        heatmap_items = []
         completed = 0
 
         # Run the full DE pipeline independently for each target cell type so
@@ -410,8 +413,91 @@ def register_differential_expression_callbacks(app):
                 )
             )
 
+            # Build a top-20 DE gene heatmap for this cell type.
+            heatmap_content = html.Div(f"Heatmap for {ct} is not available.")
+            if hasattr(results, "reset_index"):
+                heatmap_df = results.reset_index().copy()
+                if "index" in heatmap_df.columns:
+                    heatmap_df = heatmap_df.rename(columns={"index": "gene"})
+
+                if "gene" in heatmap_df.columns and "padj" in heatmap_df.columns:
+                    heatmap_df["padj"] = pd.to_numeric(heatmap_df["padj"], errors="coerce")
+                    if "log2FoldChange" in heatmap_df.columns:
+                        heatmap_df["log2FoldChange"] = pd.to_numeric(
+                            heatmap_df["log2FoldChange"], errors="coerce"
+                        )
+                        heatmap_df["abs_log2fc"] = heatmap_df["log2FoldChange"].abs()
+                    else:
+                        heatmap_df["abs_log2fc"] = 0.0
+
+                    top_genes_df = heatmap_df[
+                        heatmap_df["gene"].notna() & heatmap_df["padj"].notna()
+                    ].copy()
+                    top_genes_df = top_genes_df.sort_values(
+                        ["padj", "abs_log2fc"], ascending=[True, False]
+                    )
+                    top_genes = top_genes_df["gene"].astype(str).tolist()[:20]
+
+                    available_top_genes = [g for g in top_genes if g in adata.var_names]
+                    if available_top_genes and grouping in adata.obs.columns:
+                        heatmap_subset = adata[:, available_top_genes].copy()
+
+                        if issparse(heatmap_subset.X):
+                            heatmap_values = heatmap_subset.X.toarray()
+                        else:
+                            heatmap_values = np.asarray(heatmap_subset.X)
+
+                        # Log-transform pseudobulk counts for more interpretable colour scaling.
+                        heatmap_values = np.log1p(heatmap_values.astype(float))
+
+                        # Sort samples by selected grouping to make group separation visible.
+                        sample_order = np.argsort(
+                            heatmap_subset.obs[grouping].astype(str).to_numpy(),
+                            kind="stable",
+                        )
+                        heatmap_values = heatmap_values[sample_order, :]
+                        ordered_obs = heatmap_subset.obs.iloc[sample_order]
+
+                        # Z-score per gene across samples to emphasize relative differences.
+                        gene_means = heatmap_values.mean(axis=0, keepdims=True)
+                        gene_stds = heatmap_values.std(axis=0, keepdims=True)
+                        gene_stds[gene_stds == 0] = 1.0
+                        heatmap_z = (heatmap_values - gene_means) / gene_stds
+
+                        sample_labels = [
+                            f"{sample} ({grp})"
+                            for sample, grp in zip(
+                                ordered_obs.index.astype(str),
+                                ordered_obs[grouping].astype(str),
+                            )
+                        ]
+
+                        heatmap_fig = px.imshow(
+                            heatmap_z.T,
+                            x=sample_labels,
+                            y=available_top_genes,
+                            color_continuous_scale="RdBu_r",
+                            aspect="auto",
+                            labels={
+                                "x": "Pseudobulk Samples",
+                                "y": "Top DE Genes",
+                                "color": "Z-score",
+                            },
+                            title=f"Top 20 DE genes heatmap for {ct}",
+                        )
+                        heatmap_fig.update_layout(xaxis_tickangle=45)
+                        heatmap_content = dcc.Graph(figure=heatmap_fig)
+
+            heatmap_items.append(
+                dbc.AccordionItem(
+                    heatmap_content,
+                    title=f"Heatmap for {ct}",
+                    item_id=f"heatmap-{completed}",
+                )
+            )
+
         if completed == 0:
-            return "No valid cell type analyses could be completed.", "", "", ""
+            return "No valid cell type analyses could be completed.", "", "", "", ""
 
         logger.info(
             "Running differential expression analysis for grouping '%s', comparing '%s' vs '%s', filtered by cell type '%s'.",
@@ -445,5 +531,12 @@ def register_differential_expression_callbacks(app):
             flush=True,
             id="volcano-results-accordion",
         )
+        heatmap_output = dbc.Accordion(
+            heatmap_items,
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            id="de-heatmap-accordion",
+        )
 
-        return de_results, pseudobulk_output, de_output, volcano_output
+        return de_results, pseudobulk_output, de_output, volcano_output, heatmap_output

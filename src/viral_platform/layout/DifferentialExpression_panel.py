@@ -111,6 +111,15 @@ def create_differential_expression_panel():
                             style={"padding": "15px"},
                         ),
                     ),
+                    dbc.Tab(
+                        label="Heatmap",
+                        tab_id="de-heatmap-tab",
+                        children=html.Div(
+                            id="de-heatmap-container",
+                            children="Heatmap output will appear here.",
+                            style={"padding": "15px"},
+                        ),
+                    ),
                 ],
             )
         ], id="differential-expression-panel"
