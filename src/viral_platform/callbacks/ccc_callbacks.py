@@ -10,6 +10,8 @@ import networkx as nx
 logger = logging.getLogger(__name__)
 
 MAX_DROPDOWN_CATEGORY_VALUES = 500
+DEFAULT_CCC_RENDER_ROWS = 1000
+MAX_CCC_RENDER_ROWS = 5000
 
 def make_sortable_table(df, table_id):
     """Create a sortable Dash DataTable from a DataFrame."""
@@ -40,6 +42,32 @@ def _build_options(values):
     return options
 
 
+def _resolve_render_limit(requested_limit):
+    """Normalize requested row limit and cap to a safe upper bound."""
+    if requested_limit is None:
+        return DEFAULT_CCC_RENDER_ROWS
+    try:
+        limit = int(requested_limit)
+    except (TypeError, ValueError):
+        return DEFAULT_CCC_RENDER_ROWS
+    if limit <= 0:
+        return DEFAULT_CCC_RENDER_ROWS
+    return min(limit, MAX_CCC_RENDER_ROWS)
+
+
+def _prepare_liana_for_display(liana_results):
+    """Precompute CCC display columns once to avoid repeated per-click work."""
+    prepared = liana_results.copy()
+    prepared["interaction"] = (
+        prepared["ligand_complex"].astype(str)
+        + " -> "
+        + prepared["receptor_complex"].astype(str)
+    )
+    prepared["bubble_size"] = 1 - prepared["magnitude_rank"]
+    prepared["bubble_color"] = 1 - prepared["specificity_rank"]
+    return prepared.sort_values(by="magnitude_rank", ascending=True)
+
+
 def create_network_plot(summary, show_labels=True):
     """
     Create a cell-cell communication network.
@@ -55,6 +83,26 @@ def create_network_plot(summary, show_labels=True):
         mean_magnitude
         mean_specificity
     """
+
+    if summary is None or summary.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Cell-Cell Communication Network",
+            template="plotly_white",
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            annotations=[
+                dict(
+                    text="No interactions available for selected filters.",
+                    x=0.5,
+                    y=0.5,
+                    xref="paper",
+                    yref="paper",
+                    showarrow=False,
+                )
+            ],
+        )
+        return fig
 
     # --------------------------------------------------
     # Build graph
@@ -547,12 +595,13 @@ def register_ccc_callbacks(app):
         Output("ccc-bubble-plot-container", "children", allow_duplicate=True),
         Output("ccc-network-plot-container", "children", allow_duplicate=True),
         Input("run-ccc-button", "n_clicks"),
+        State("active-dataset-version", "data"),
         State("ccc-grouping-dropdown", "value"),
         State("ccc-method-dropdown", "value"),
         State("ccc-resource-dropdown", "value"),
         prevent_initial_call=True,
     )
-    def run_ccc_analysis(n_clicks, grouping_variable, method, resource):
+    def run_ccc_analysis(n_clicks, dataset_version, grouping_variable, method, resource):
         """
         Runs the Cell-Cell Communication (CCC) analysis using the selected parameters.
 
@@ -581,15 +630,31 @@ def register_ccc_callbacks(app):
         if adata is None:
             return "done", "No dataset available for cell-cell communication analysis.", "", ""
         
-        # Run the CCC analysis using the provided parameters
-        liana_results = run_liana(adata, grouping_variable, method, resource)
-        update_state_store(CCC_results={"results": liana_results})
+        cache_key = {
+            "dataset_version": str(dataset_version),
+            "grouping_variable": str(grouping_variable),
+            "method": str(method),
+            "resource": str(resource),
+        }
+
+        history = get_state_store()
+        cached_ccc = history.get("CCC_results", {})
+        if cached_ccc.get("cache_key") == cache_key and cached_ccc.get("results") is not None:
+            prepared_results = cached_ccc["results"]
+            logger.info("Reusing cached CCC results for key=%s", cache_key)
+        else:
+            # Run the CCC analysis using the provided parameters.
+            liana_results = run_liana(adata, grouping_variable, method, resource)
+            prepared_results = _prepare_liana_for_display(liana_results)
+            update_state_store(CCC_results={"results": prepared_results, "cache_key": cache_key})
         
         # Filter and format the results for display
         
-        results_table = liana_output_table(liana_results)
+        display_results = prepared_results.head(DEFAULT_CCC_RENDER_ROWS)
+
+        results_table = liana_output_table(display_results)
         results_table = make_sortable_table(results_table, "ccc-results-table")
-        summary = summarise_celltype_interactions(liana_results)
+        summary = summarise_celltype_interactions(display_results)
 
         # Network plot generation
         network_fig = create_network_plot(summary)
@@ -617,6 +682,7 @@ def register_ccc_callbacks(app):
         return "done", results_table, dcc.Graph(figure=fig), dcc.Graph(figure=network_fig)
     
     @app.callback(
+        Output("ccc-loading-signal", "children", allow_duplicate=True),
         Output("ccc-summary-container", "children", allow_duplicate=True),
         Output("ccc-bubble-plot-container", "children", allow_duplicate=True),
         Output("ccc-network-plot-container", "children", allow_duplicate=True),
@@ -650,14 +716,14 @@ def register_ccc_callbacks(app):
             - A Dash Graph displaying the filtered bubble plot.
         """
         if not n_clicks or n_clicks == 0:
-            return no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update
         
         history = get_state_store()
         liana_results = history.get("CCC_results", {}).get("results")
 
         if liana_results is None:
             logger.warning("No LIANA results found in state store for filtering.")
-            return html.P("No cell-cell communication results available to filter.", style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"}), "", ""
+            return "done", html.P("No cell-cell communication results available to filter.", style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"}), "", ""
         
         filtered_results = filter_liana_results(
             liana_results,
@@ -665,21 +731,21 @@ def register_ccc_callbacks(app):
             target=target_filter if target_filter != "_all_" else None,
         )
 
-        filtered_results = filtered_results.sort_values(by="magnitude_rank", ascending=True).head(interaction_filter if interaction_filter is not None else len(filtered_results))
+        render_limit = _resolve_render_limit(interaction_filter)
+        filtered_results = filtered_results.head(render_limit)
+
+        logger.info(
+            "CCC filter render rows: requested=%s resolved=%s remaining=%s",
+            interaction_filter,
+            render_limit,
+            len(filtered_results),
+        )
 
         show_labels = True in (show_labels_value or [])
         network_fig = create_network_plot(summarise_celltype_interactions(filtered_results), show_labels=show_labels)
 
-        filtered_results["interaction"] = (
-            filtered_results["ligand_complex"]
-            + " → "
-            + filtered_results["receptor_complex"]
-        )
-
         results_table = liana_output_table(filtered_results)
         results_table = make_sortable_table(results_table, "ccc-results-table")
-        filtered_results["bubble_size"] = 1 - filtered_results["magnitude_rank"]
-        filtered_results["bubble_color"] = 1 - filtered_results["specificity_rank"]
 
 
         if target_filter == "_all_":
@@ -735,9 +801,10 @@ def register_ccc_callbacks(app):
                 yaxis_title="Interaction (Ligand → Receptor)",
             )
 
-        return results_table, dcc.Graph(figure=fig), dcc.Graph(figure=network_fig)
+        return "done", results_table, dcc.Graph(figure=fig), dcc.Graph(figure=network_fig)
     
     @app.callback(
+        Output("ccc-loading-signal", "children", allow_duplicate=True),
         Output("ccc-summary-container", "children", allow_duplicate=True),
         Output("ccc-bubble-plot-container", "children", allow_duplicate=True),
         Output("ccc-network-plot-container", "children", allow_duplicate=True),
@@ -759,18 +826,20 @@ def register_ccc_callbacks(app):
 
         """
         if not n_clicks or n_clicks == 0:
-            return no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
         
         history = get_state_store()
         liana_results = history.get("CCC_results", {}).get("results")
 
         if liana_results is None:
             logger.warning("No LIANA results found in state store for filtering.")
-            return html.P("No cell-cell communication results available to filter.", style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"}), "", "", [True]
+            return "done", html.P("No cell-cell communication results available to filter.", style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"}), "", "", [True]
         
-        results_table = liana_output_table(liana_results)
+        display_results = liana_results.head(DEFAULT_CCC_RENDER_ROWS)
+
+        results_table = liana_output_table(display_results)
         results_table = make_sortable_table(results_table, "ccc-results-table")
-        summary = summarise_celltype_interactions(liana_results)
+        summary = summarise_celltype_interactions(display_results)
 
         network_fig = create_network_plot(summary, show_labels=True)
 
@@ -794,6 +863,6 @@ def register_ccc_callbacks(app):
             title="Cell-Cell Communication Bubble Plot",
         )
 
-        return results_table, dcc.Graph(figure=fig), dcc.Graph(figure=network_fig), [True]
+        return "done", results_table, dcc.Graph(figure=fig), dcc.Graph(figure=network_fig), [True]
 
 
