@@ -66,7 +66,7 @@ def create_layout():
                     ]),
                 ),
                 dbc.Tab(
-                    label="SCMOVIR Reference Database",
+                    label="scMOVIR Reference Database",
                     tab_id="SCMOVIR-tab",
                     children=html.Div([
                         create_scmovir_reference_panel(),

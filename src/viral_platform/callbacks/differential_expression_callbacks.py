@@ -36,6 +36,31 @@ def _guess_cell_type_columns(groupable_columns):
     return matches
 
 
+def _normalize_column_name(value):
+    """Normalize a column name for tolerant comparisons."""
+    return "".join(ch for ch in str(value).lower() if ch.isalnum())
+
+
+def _find_sample_id_column(columns, metadata_sample_columns=None):
+    """Resolve sample-ID column, preferring metadata-discovered sample columns."""
+    normalized_to_original = {_normalize_column_name(col): col for col in list(columns)}
+
+    if metadata_sample_columns:
+        for candidate in metadata_sample_columns:
+            normalized_candidate = _normalize_column_name(candidate)
+            if normalized_candidate in normalized_to_original:
+                return normalized_to_original[normalized_candidate]
+
+    if "sampleid" in normalized_to_original:
+        return normalized_to_original["sampleid"]
+
+    for normalized_name, original_name in normalized_to_original.items():
+        if "sampleid" in normalized_name:
+            return original_name
+
+    return None
+
+
 def register_differential_expression_callbacks(app):
     """Register callbacks that keep DE dropdown options synchronized with dataset metadata/state."""
     @app.callback(
@@ -65,11 +90,9 @@ def register_differential_expression_callbacks(app):
 
         
 
-        cell_type_columns = metadata_info.get("cell_type_columns", [])
-        if not cell_type_columns:
-            cell_type_columns = _guess_cell_type_columns(groupable_columns)
-
-        celltype_variable_options = _build_options(cell_type_columns)
+        # Allow any groupable metadata column to be used as the cell-type field.
+        # Some datasets use non-standard names for cell type annotations.
+        celltype_variable_options = _build_options(groupable_columns)
         celltype_variable_value = (
             celltype_variable_options[0]["value"] if celltype_variable_options else None
         )
@@ -234,6 +257,10 @@ def register_differential_expression_callbacks(app):
         # Keep unique order in case metadata_info has duplicates.
         target_celltypes = list(dict.fromkeys(target_celltypes))
 
+        state = get_state_store()
+        metadata_info = state.get("metadata_info", {})
+        metadata_sample_columns = metadata_info.get("sample_columns", [])
+
         pseudobulk_items = []
         de_items = []
         volcano_items = []
@@ -256,8 +283,16 @@ def register_differential_expression_callbacks(app):
             completed += 1
 
             if grouping in adata.obs.columns:
-                group1_n = adata.obs[adata.obs[grouping] == group1]["sampleID"].nunique() if "sampleID" in adata.obs.columns else "N/A"
-                group2_n = adata.obs[adata.obs[grouping] == group2]["sampleID"].nunique() if "sampleID" in adata.obs.columns else "N/A"
+                sample_id_col = _find_sample_id_column(
+                    adata.obs.columns,
+                    metadata_sample_columns=metadata_sample_columns,
+                )
+                if sample_id_col is not None:
+                    group1_n = adata.obs[adata.obs[grouping] == group1][sample_id_col].nunique()
+                    group2_n = adata.obs[adata.obs[grouping] == group2][sample_id_col].nunique()
+                else:
+                    group1_n = "N/A"
+                    group2_n = "N/A"
             else:
                 group1_n = "N/A"
                 group2_n = "N/A"

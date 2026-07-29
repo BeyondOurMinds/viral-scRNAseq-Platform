@@ -1,9 +1,39 @@
-from viral_platform.state.dataset_store import get_dataset
+from viral_platform.state.dataset_store import get_dataset, get_state_store
 import logging
 import decoupler as dc
 from anndata import AnnData
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_column_name(value):
+    """Normalize metadata column names for tolerant matching."""
+    return "".join(ch for ch in str(value).lower() if ch.isalnum())
+
+
+def _resolve_sample_column(columns, metadata_sample_columns=None):
+    """Find likely sample ID column names, preferring metadata-discovered sample columns."""
+    normalized_to_original = {_normalize_column_name(col): col for col in list(columns)}
+
+    # Prefer metadata-discovered sample columns from metadata discovery.
+    if metadata_sample_columns:
+        for candidate in metadata_sample_columns:
+            normalized_candidate = _normalize_column_name(candidate)
+            if normalized_candidate in normalized_to_original:
+                return normalized_to_original[normalized_candidate]
+
+    if "sampleid" in normalized_to_original:
+        return normalized_to_original["sampleid"]
+
+    for normalized_name, original_name in normalized_to_original.items():
+        if "sampleid" in normalized_name:
+            return original_name
+
+    for normalized_name, original_name in normalized_to_original.items():
+        if normalized_name.startswith("sample"):
+            return original_name
+
+    return None
 
 
 
@@ -57,9 +87,22 @@ def find_biological_replicates(adata, grouping):
     - A pandas Series indicating the number of unique samples for each group in the specified grouping variable
     """
     continue_analysis = False
-    sample_column = "sampleID" # temprorary hardcoded value, should be dynamic based on metadata discovery
     if adata is None or grouping not in adata.obs.columns:
         logger.warning("Invalid dataset or grouping variable for finding biological replicates.")
+        return continue_analysis
+
+    state = get_state_store()
+    metadata_info = state.get("metadata_info", {})
+    metadata_sample_columns = metadata_info.get("sample_columns", [])
+
+    sample_column = _resolve_sample_column(
+        adata.obs.columns,
+        metadata_sample_columns=metadata_sample_columns,
+    )
+    if sample_column is None:
+        logger.warning(
+            "No sample-ID-like column found in metadata; expected names like sampleID/sample_id."
+        )
         return continue_analysis
     
     # Assuming that biological replicates are identified by unique values in the grouping column
@@ -88,7 +131,27 @@ def create_pseudobulk(adata, grouping=None, sample_column="sampleID"):
     Returns:
     - A new AnnData object representing the pseudobulk dataset.
     """
-    if adata is None or sample_column not in adata.obs.columns:
+    if adata is None:
+        logger.warning("Invalid dataset for creating pseudobulk.")
+        return None
+
+    if sample_column not in adata.obs.columns:
+        state = get_state_store()
+        metadata_info = state.get("metadata_info", {})
+        metadata_sample_columns = metadata_info.get("sample_columns", [])
+
+        resolved_sample_column = _resolve_sample_column(
+            adata.obs.columns,
+            metadata_sample_columns=metadata_sample_columns,
+        )
+        if resolved_sample_column is None:
+            logger.warning(
+                "Invalid grouping/sample columns for creating pseudobulk. Could not resolve sample column from metadata."
+            )
+            return None
+        sample_column = resolved_sample_column
+
+    if sample_column not in adata.obs.columns:
         logger.warning("Invalid dataset or grouping/sample columns for creating pseudobulk.")
         return None
     
