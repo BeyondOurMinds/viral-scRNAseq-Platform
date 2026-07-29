@@ -9,9 +9,9 @@ import networkx as nx
 
 logger = logging.getLogger(__name__)
 
-MAX_DROPDOWN_CATEGORY_VALUES = 500
-DEFAULT_CCC_RENDER_ROWS = 1000
-MAX_CCC_RENDER_ROWS = 5000
+MAX_DROPDOWN_CATEGORY_VALUES = 500 # Maximum number of unique values allowed in the source/target dropdowns to prevent performance issues.
+DEFAULT_CCC_RENDER_ROWS = 1000 # Default number of rows to render in the CCC results table and bubble plot.
+MAX_CCC_RENDER_ROWS = 5000 # Maximum number of rows to render in the CCC results table and bubble plot to prevent performance issues.
 
 def make_sortable_table(df, table_id):
     """Create a sortable Dash DataTable from a DataFrame."""
