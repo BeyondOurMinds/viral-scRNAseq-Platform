@@ -193,6 +193,29 @@ def create_CCC_panel():
                     ),
                     width="auto",
                 ),
+                dbc.Col(
+                    dbc.Button(
+                        "Export Network Fullscreen HTML",
+                        id="ccc-export-network-html-button",
+                        n_clicks=0,
+                        color="info",
+                        className="mb-3",
+                    ),
+                    width="auto",
+                ),
+                dbc.Col(
+                    dcc.Loading(
+                        id="ccc-export-loading-indicator",
+                        type="default",
+                        children=html.Div(
+                            id="ccc-export-loading-signal",
+                            style={"minWidth": "200px", "fontSize": "12px", "color": "#6c757d", "paddingTop": "8px"},
+                        ),
+                    ),
+                    width="auto",
+                ),
             ])
+            ,
+            dcc.Download(id="ccc-network-html-download")
         ]
     )

@@ -5,6 +5,7 @@ import logging
 import math
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 import networkx as nx
 
 
@@ -112,9 +113,8 @@ def _label_position(x, y, node_size, label):
     # so adjacent labels on the ring have less chance of colliding.
     radius = 1.56 + (node_size / 240) + (0.012 * len(str(label)))
     if x < 0:
-        # Left-side text still begins at the leader-line endpoint. Move that
-        # endpoint farther left so its left-to-right text has room before it
-        # reaches the network.
+        # Left-side text begins at the anchor position. Push the anchor farther
+        # out so left-side labels have room and avoid touching the network.
         radius += 0.025 * len(str(label))
     return (
         radius * x / distance_from_origin,
@@ -474,18 +474,17 @@ def create_network_plot(summary, show_labels=True):
                 axref="x",
                 ayref="y",
                 text=node,
+                # Keep annotation anchor behavior for stable label placement,
+                # but hide the leader line itself.
                 showarrow=True,
                 arrowhead=0,
                 arrowwidth=1,
-                arrowcolor="rgba(70, 70, 70, 0.55)",
+                arrowcolor="rgba(0, 0, 0, 0)",
                 standoff=14,
                 font=dict(
                     size=12,
                     color="black",
                 ),
-                # Dash/Plotly draws the leader to this annotation anchor.
-                # Keeping it "left" means that endpoint is always the first
-                # character of the displayed label.
                 xanchor="left",
                 yanchor="middle",
                 align="left",
@@ -563,6 +562,8 @@ def create_network_plot(summary, show_labels=True):
 
         template="plotly_white",
 
+        height=780,
+
         hovermode="closest",
 
         xaxis=dict(
@@ -576,8 +577,6 @@ def create_network_plot(summary, show_labels=True):
             visible=False,
             zeroline=False,
             showgrid=False,
-            scaleanchor="x",
-            scaleratio=1,
             range=[-2.45, 2.45],
         ),
 
@@ -936,5 +935,78 @@ def register_ccc_callbacks(app):
         )
 
         return "done", results_table, dcc.Graph(figure=fig), dcc.Graph(figure=network_fig), [True]
+
+    @app.callback(
+        Output("ccc-export-loading-signal", "children"),
+        Output("ccc-network-html-download", "data"),
+        Input("ccc-export-network-html-button", "n_clicks"),
+        State("ccc-source-filter-dropdown", "value"),
+        State("ccc-target-filter-dropdown", "value"),
+        State("ccc-show-network-labels", "value"),
+        prevent_initial_call=True,
+    )
+    def export_network_fullscreen_html(n_clicks, source_filter, target_filter, show_labels_value):
+        """Export a standalone fullscreen HTML for the current CCC network view."""
+        if not n_clicks or n_clicks == 0:
+            return no_update, no_update
+
+        history = get_state_store()
+        liana_results = history.get("CCC_results", {}).get("results")
+        if liana_results is None:
+            logger.warning("No LIANA results found while exporting CCC network HTML.")
+            return "No CCC results available. Run analysis first.", no_update
+
+        filtered_results = filter_liana_results(
+            liana_results,
+            source=source_filter if source_filter and source_filter != "_all_" else None,
+            target=target_filter if target_filter and target_filter != "_all_" else None,
+        )
+
+        show_labels = True in (show_labels_value or [])
+        network_fig = create_network_plot(
+            summarise_celltype_interactions(filtered_results),
+            show_labels=show_labels,
+        )
+
+        network_fig.update_layout(autosize=True, margin=dict(l=20, r=20, t=60, b=20))
+
+        figure_html = pio.to_html(
+            network_fig,
+            include_plotlyjs="cdn",
+            full_html=False,
+            config={"responsive": True, "displaylogo": False},
+        )
+
+        full_html = f"""<!doctype html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title>CCC Network Fullscreen</title>
+  <style>
+    html, body {{
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: #ffffff;
+      overflow: hidden;
+    }}
+    .plotly-graph-div {{
+      width: 100vw !important;
+      height: 100vh !important;
+    }}
+  </style>
+</head>
+<body>
+  {figure_html}
+</body>
+</html>
+"""
+
+        return "Export ready. Your download should begin automatically.", {
+            "content": full_html,
+            "filename": "ccc_network_fullscreen.html",
+            "type": "text/html",
+        }
 
 
