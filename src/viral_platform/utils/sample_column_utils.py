@@ -1,11 +1,6 @@
 import re
 
 
-ACCESSION_PATTERN = re.compile(
-    r"^(?:GSM|GSE|SRR|SRS|SRX|ERR|ERS|ERX|DRR|DRS|DRX|SAMN|SAMEA)[A-Za-z0-9_.-]*$",
-    re.IGNORECASE,
-)
-TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
 IDENTIFIER_TOKENS = {
     "barcode",
     "cellbarcode",
@@ -16,6 +11,7 @@ IDENTIFIER_TOKENS = {
     "uuid",
     "identifier",
 }
+BIOLOGICAL_ID_TOKENS = {"donor", "patient", "participant", "subject", "individual"}
 
 
 def normalize_column_name(value):
@@ -47,62 +43,29 @@ def looks_like_identifier_column(column_name):
     return normalized in IDENTIFIER_TOKENS or any(token in IDENTIFIER_TOKENS for token in tokens)
 
 
-def _non_empty_string_values(series):
-    values = [str(value).strip() for value in series.dropna().tolist()]
-    return [value for value in values if value]
+def sample_column_score(column_name):
+    """Score likely sample columns from their metadata names.
 
-
-def _values_look_list_like(series):
-    values = _non_empty_string_values(series)
-    if not values:
-        return False
-    list_like = [value for value in values if value.startswith("[") and value.endswith("]")]
-    return (len(list_like) / float(len(values))) >= 0.8
-
-
-def _values_look_like_accessions(series):
-    values = _non_empty_string_values(series)
-    if not values:
-        return False
-    return all(bool(ACCESSION_PATTERN.match(value)) for value in values)
-
-
-def _values_are_simple_tokens(series):
-    values = _non_empty_string_values(series)
-    if not values:
-        return False
-    return all(bool(TOKEN_PATTERN.match(value)) for value in values)
-
-
-def sample_column_score(column_name, series=None):
-    """Score candidate sample columns using name and content-based tiers.
-
-    Tiers:
-    1) explicit sample-id naming
-    2) sample-named column with accession-like values
-    3) sample-named column with compact token values
-    4) standalone ID token columns
+    This deliberately avoids inspecting every value in an AnnData column.  Column
+    names are stable metadata and make the automatic choice explainable; users
+    can still choose a different column in the UI when their dataset uses an
+    unusual convention.
     """
     normalized_name = normalize_column_name(column_name)
     sample_named = is_sample_named_column(column_name)
+    tokens = set(split_identifier_tokens(column_name))
 
     if looks_like_identifier_column(column_name) and not sample_named:
-        return 0
-
-    if series is not None and _values_look_list_like(series):
         return 0
 
     if normalized_name == "sampleid" or (sample_named and has_standalone_id_token(column_name)):
         return 4000
 
-    if series is not None and sample_named and _values_look_like_accessions(series):
+    if sample_named:
         return 3000
 
-    if series is not None and sample_named and _values_are_simple_tokens(series):
+    if has_standalone_id_token(column_name) and tokens.intersection(BIOLOGICAL_ID_TOKENS):
         return 2000
-
-    if has_standalone_id_token(column_name):
-        return 1000
 
     return 0
 
@@ -123,10 +86,7 @@ def rank_sample_columns(columns, obs_df=None, metadata_sample_columns=None, min_
 
     scored = []
     for index, column in enumerate(unique_columns):
-        series = None
-        if obs_df is not None and column in obs_df.columns:
-            series = obs_df[column]
-        score = sample_column_score(column, series=series)
+        score = sample_column_score(column)
         if score >= min_score:
             scored.append((column, score, index))
 

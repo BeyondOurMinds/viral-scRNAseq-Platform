@@ -166,9 +166,9 @@ def create_CCC_panel():
                     dcc.Input(
                         id="ccc-interaction-filter-input",
                         type="number",
-                        placeholder="Filter by top Interaction",
+                        placeholder="Show top interactions",
                         min=1,
-                        max=10000,
+                        max=5000,
                         step=1,
                     )
                 ),

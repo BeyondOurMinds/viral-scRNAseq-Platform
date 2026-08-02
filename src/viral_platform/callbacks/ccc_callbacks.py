@@ -68,6 +68,11 @@ def _prepare_liana_for_display(liana_results):
     return prepared.sort_values(by="magnitude_rank", ascending=True)
 
 
+def _display_rows(results, requested_limit=None):
+    """Return only the strongest rows for components that render each interaction."""
+    return results.head(_resolve_render_limit(requested_limit))
+
+
 def create_network_plot(summary, show_labels=True):
     """
     Create a cell-cell communication network.
@@ -650,11 +655,14 @@ def register_ccc_callbacks(app):
         
         # Filter and format the results for display
         
-        display_results = prepared_results.head(DEFAULT_CCC_RENDER_ROWS)
+        display_results = _display_rows(prepared_results)
 
         results_table = liana_output_table(display_results)
         results_table = make_sortable_table(results_table, "ccc-results-table")
-        summary = summarise_celltype_interactions(display_results)
+        # The summary represents every LIANA result.  Only the interaction-level
+        # table is capped, because rendering thousands of individual marks is
+        # what slows the browser down.
+        summary = summarise_celltype_interactions(prepared_results)
 
         # Network plot generation
         network_fig = create_network_plot(summary)
@@ -732,25 +740,25 @@ def register_ccc_callbacks(app):
         )
 
         render_limit = _resolve_render_limit(interaction_filter)
-        filtered_results = filtered_results.head(render_limit)
+        display_results = _display_rows(filtered_results, render_limit)
 
         logger.info(
             "CCC filter render rows: requested=%s resolved=%s remaining=%s",
             interaction_filter,
             render_limit,
-            len(filtered_results),
+            len(display_results),
         )
 
         show_labels = True in (show_labels_value or [])
         network_fig = create_network_plot(summarise_celltype_interactions(filtered_results), show_labels=show_labels)
 
-        results_table = liana_output_table(filtered_results)
+        results_table = liana_output_table(display_results)
         results_table = make_sortable_table(results_table, "ccc-results-table")
 
 
         if target_filter == "_all_":
             fig = px.scatter(
-                filtered_results,
+                display_results,
                 x="target",
                 y="interaction",
                 size="bubble_size",
@@ -775,7 +783,7 @@ def register_ccc_callbacks(app):
             )
         else:
             fig = px.scatter(
-                filtered_results,
+                display_results,
                 x="magnitude_rank",
                 y="interaction",
                 size="bubble_size",
@@ -835,11 +843,11 @@ def register_ccc_callbacks(app):
             logger.warning("No LIANA results found in state store for filtering.")
             return "done", html.P("No cell-cell communication results available to filter.", style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"}), "", "", [True]
         
-        display_results = liana_results.head(DEFAULT_CCC_RENDER_ROWS)
+        display_results = _display_rows(liana_results)
 
         results_table = liana_output_table(display_results)
         results_table = make_sortable_table(results_table, "ccc-results-table")
-        summary = summarise_celltype_interactions(display_results)
+        summary = summarise_celltype_interactions(liana_results)
 
         network_fig = create_network_plot(summary, show_labels=True)
 
