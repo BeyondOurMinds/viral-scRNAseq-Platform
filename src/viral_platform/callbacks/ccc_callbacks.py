@@ -2,6 +2,7 @@ from dash import Input, Output, State, dash_table, html, no_update, dcc
 from viral_platform.state.dataset_store import get_working_dataset, get_state_store, update_state_store
 from viral_platform.analysis.CellCellLIANA import run_liana, filter_liana_results, liana_output_table, summarise_celltype_interactions
 import logging
+import math
 import plotly.express as px
 import plotly.graph_objects as go
 import networkx as nx
@@ -73,6 +74,54 @@ def _display_rows(results, requested_limit=None):
     return results.head(_resolve_render_limit(requested_limit))
 
 
+def _regular_polygon_layout(nodes):
+    """Place nodes at equally spaced points around a regular polygon."""
+    ordered_nodes = sorted(nodes, key=lambda value: str(value))
+    count = len(ordered_nodes)
+
+    if count == 1:
+        return {ordered_nodes[0]: (0.0, 0.0)}, ordered_nodes
+
+    radius = 1.0
+    step = (2 * math.pi) / count
+    start_angle = math.pi / 2
+
+    positions = {}
+    for index, node in enumerate(ordered_nodes):
+        angle = start_angle - (index * step)
+        positions[node] = (radius * math.cos(angle), radius * math.sin(angle))
+
+    return positions, ordered_nodes
+
+
+def _label_rotation(x, y, counter_clockwise_offset=8):
+    """Point a label away from the centre, with a small counter-clockwise turn."""
+    radial_angle = math.degrees(math.atan2(y, x))
+    # Plotly rotates annotation text in screen coordinates, whose vertical
+    # direction is the reverse of the graph's y-axis.
+    return ((-radial_angle - counter_clockwise_offset + 180) % 360) - 180
+
+
+def _label_position(x, y, node_size, label):
+    """Place a label on an outer ring and return its position."""
+    distance_from_origin = math.hypot(x, y)
+    if distance_from_origin == 0:
+        return 0.0, 1.58
+
+    # Keep labels outside the graph. Longer labels receive slightly more room
+    # so adjacent labels on the ring have less chance of colliding.
+    radius = 1.56 + (node_size / 240) + (0.012 * len(str(label)))
+    if x < 0:
+        # Left-side text still begins at the leader-line endpoint. Move that
+        # endpoint farther left so its left-to-right text has room before it
+        # reaches the network.
+        radius += 0.025 * len(str(label))
+    return (
+        radius * x / distance_from_origin,
+        radius * y / distance_from_origin,
+    )
+
+
 def create_network_plot(summary, show_labels=True):
     """
     Create a cell-cell communication network.
@@ -129,10 +178,7 @@ def create_network_plot(summary, show_labels=True):
     # Layout
     # --------------------------------------------------
 
-    pos = nx.kamada_kawai_layout(G, weight="interactions")
-
-    # Alternative:
-    # pos = nx.spring_layout(G, seed=42, k=2.5, iterations=200)
+    pos, ordered_nodes = _regular_polygon_layout(G.nodes())
 
     # --------------------------------------------------
     # Node statistics
@@ -315,7 +361,7 @@ def create_network_plot(summary, show_labels=True):
 
     node_text = []
 
-    for node in G.nodes():
+    for node in ordered_nodes:
 
         x, y = pos[node]
 
@@ -413,27 +459,37 @@ def create_network_plot(summary, show_labels=True):
     # --------------------------------------------------
 
     if show_labels:
-        for node in G.nodes():
-
+        for node in ordered_nodes:
             x, y = pos[node]
+            rotation = _label_rotation(x, y)
+            label_x, label_y = _label_position(x, y, node_sizes[node], node)
 
             fig.add_annotation(
-
-                x=x,
-                y=y + 0.01 + (node_sizes[node] / 1500),      # Adjust vertical offset as needed
-
+                x=label_x,
+                y=label_y,
+                ax=x,
+                ay=y,
+                xref="x",
+                yref="y",
+                axref="x",
+                ayref="y",
                 text=node,
-
-                showarrow=False,
-
+                showarrow=True,
+                arrowhead=0,
+                arrowwidth=1,
+                arrowcolor="rgba(70, 70, 70, 0.55)",
+                standoff=14,
                 font=dict(
                     size=12,
-                    color="black"
+                    color="black",
                 ),
-
-                xanchor="center",
-                yanchor="bottom",
-
+                # Dash/Plotly draws the leader to this annotation anchor.
+                # Keeping it "left" means that endpoint is always the first
+                # character of the displayed label.
+                xanchor="left",
+                yanchor="middle",
+                align="left",
+                textangle=rotation,
             )
 
 
@@ -510,11 +566,19 @@ def create_network_plot(summary, show_labels=True):
         hovermode="closest",
 
         xaxis=dict(
-            visible=False
+            visible=False,
+            zeroline=False,
+            showgrid=False,
+            range=[-2.45, 2.45],
         ),
 
         yaxis=dict(
-            visible=False
+            visible=False,
+            zeroline=False,
+            showgrid=False,
+            scaleanchor="x",
+            scaleratio=1,
+            range=[-2.45, 2.45],
         ),
 
         margin=dict(
