@@ -189,6 +189,11 @@ def create_differential_expression_panel():
                                     color="secondary",
                                     className="mt-2",
                                 ),
+                                html.Hr(),
+                                html.Div(
+                                    id="de-reference-results-container",
+                                    children="Reference DE outputs will appear here.",
+                                ),
                             ],
                         ),
                     ),

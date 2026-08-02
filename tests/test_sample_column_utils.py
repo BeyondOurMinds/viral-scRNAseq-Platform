@@ -13,6 +13,12 @@ def test_rank_sample_columns_excludes_technical_identifiers():
     assert rank_sample_columns(columns) == ["sample", "patient_id"]
 
 
+def test_geo_accession_beats_sample_characteristics():
+    columns = ["Sample_characteristics_ch1", "Sample_geo_accession"]
+
+    assert resolve_sample_column(columns) == "Sample_geo_accession"
+
+
 def test_sample_detection_does_not_scan_column_values():
     # The resolver accepts this opaque object because values are intentionally
     # not inspected when choosing a metadata column.

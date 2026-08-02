@@ -17,6 +17,8 @@ class GeneHeatmapParser:
         for cluster_idx, gene_idx, expression in data["values"]:
             rows.append(
                 {
+                    "cluster_order": cluster_idx,
+                    "gene_order": gene_idx,
                     "cluster_name": clusters[cluster_idx],
                     "gene_name": genes[gene_idx],
                     "expression": expression,

@@ -12,6 +12,7 @@ IDENTIFIER_TOKENS = {
     "identifier",
 }
 BIOLOGICAL_ID_TOKENS = {"donor", "patient", "participant", "subject", "individual"}
+GEO_ACCESSION_TOKENS = {"geo", "accession"}
 
 
 def normalize_column_name(value):
@@ -60,6 +61,12 @@ def sample_column_score(column_name):
 
     if normalized_name == "sampleid" or (sample_named and has_standalone_id_token(column_name)):
         return 4000
+
+    # GEO sample accessions identify the biological source directly.  They are
+    # more suitable for pseudobulk/DE than descriptive fields such as
+    # ``Sample_characteristics_ch1``.
+    if sample_named and GEO_ACCESSION_TOKENS.issubset(tokens):
+        return 3500
 
     if sample_named:
         return 3000
