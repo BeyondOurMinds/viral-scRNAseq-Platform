@@ -202,6 +202,11 @@ def create_CCC_panel():
                                     color="secondary",
                                     className="mt-2",
                                 ),
+                                html.Hr(),
+                                html.Div(
+                                    id="ccc-reference-results-container",
+                                    children="Reference CCC outputs will appear here.",
+                                ),
                             ],
                         ),
                     ),

@@ -21,8 +21,14 @@ _DEFAULT_HISTORY = {
         "isg_features": [],
     },
     "CCC_results": {
-            "results": None,
+        "results": None,
     },
+    "CCC_reference_results": {
+        "results": None,
+        "file_type": None,
+        "selected_filename": None,
+    },
+    "CCC_active_context": "uploaded",
 }
 
 
@@ -53,6 +59,12 @@ def _new_history_state():
         "CCC_results": {
             "results": None,
         },
+        "CCC_reference_results": {
+            "results": None,
+            "file_type": None,
+            "selected_filename": None,
+        },
+        "CCC_active_context": "uploaded",
     }
 
 
@@ -163,3 +175,9 @@ def clear_working_dataset():
     history["CCC_results"] = {
         "results": None,
     }
+    history["CCC_reference_results"] = {
+        "results": None,
+        "file_type": None,
+        "selected_filename": None,
+    }
+    history["CCC_active_context"] = "uploaded"

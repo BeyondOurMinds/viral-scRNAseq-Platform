@@ -1,4 +1,7 @@
-from dash import Input, Output, State, dash_table, html, no_update, dcc
+from dash import Input, Output, State, ctx, dash_table, html, no_update, dcc
+import dash_bootstrap_components as dbc
+import numpy as np
+import pandas as pd
 from viral_platform.state.dataset_store import (
     get_working_dataset,
     get_state_store,
@@ -10,15 +13,20 @@ from viral_platform.analysis.CellCellLIANA import (
     liana_output_table,
     summarise_celltype_interactions,
 )
+from viral_platform.scmovir.parsers.cellphonedb_parser import (
+    CellPhoneDBParser,
+    CellPhoneDBDCCParser,
+)
+from viral_platform.utils.reference_file_utils import (
+    read_downloaded_reference_file_map,
+    read_downloaded_reference_filenames,
+)
 import logging
 import math
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 import networkx as nx
-from viral_platform.utils.reference_file_utils import (
-    read_downloaded_reference_filenames,
-)
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +41,277 @@ MAX_CCC_RENDER_ROWS = 5000  # Maximum number of rows to render in the CCC result
 def _read_downloaded_cellphonedb_filenames():
     return read_downloaded_reference_filenames(
         lambda filename: "cellphonedb" in filename.lower()
+    )
+
+
+# ---------------------------------------------------------------------------
+# CellPhoneDB reference rendering helpers
+# ---------------------------------------------------------------------------
+
+CCC_REFERENCE_SUFFIXES = (
+    "_cellphonedb.json",
+    "_cellphonedb_top.json",
+    "_cellphonedb_dcc.csv",
+)
+
+
+def _load_ccc_reference_file(filename, path):
+    """Parse a CellPhoneDB reference file and return (df, file_type)."""
+    lowered = filename.lower()
+    if lowered.endswith(".csv"):
+        return CellPhoneDBDCCParser.parse(path), "dcc"
+    return CellPhoneDBParser.parse(path), "json"
+
+
+def _build_ccc_reference_table(df, file_type):
+    if file_type == "json":
+        cols = [
+            c
+            for c in [
+                "source",
+                "target",
+                "ligand_complex",
+                "receptor_complex",
+                "lr_means",
+                "cellphone_pvals",
+                "condition",
+                "top_status",
+            ]
+            if c in df.columns
+        ]
+    else:
+        cols = list(df.columns)
+    display_df = df[cols].copy()
+    return dash_table.DataTable(
+        id="ccc-reference-table",
+        columns=[{"name": c, "id": c} for c in cols],
+        data=display_df.to_dict("records"),
+        sort_action="native",
+        sort_mode="single",
+        page_size=20,
+        style_table={"overflowX": "auto"},
+        style_cell={"textAlign": "left", "padding": "6px", "fontSize": "13px"},
+        style_header={"fontWeight": "600"},
+    )
+
+
+def _build_ccc_reference_summary(df, file_type):
+    """Return (summary_df, mean_magnitude_col, mean_specificity_col) for network."""
+    if file_type == "json":
+        if not {"source", "target", "ligand_complex", "cellphone_pvals"}.issubset(
+            df.columns
+        ):
+            return None
+        pvals = pd.to_numeric(df["cellphone_pvals"], errors="coerce")
+        pval_max = pvals[pvals > 0].max() if (pvals > 0).any() else 1.0
+        df = df.copy()
+        df["_norm_pval"] = pvals.clip(lower=0).fillna(pval_max) / pval_max
+        lr_means = pd.to_numeric(
+            df.get("lr_means", pd.Series(dtype=float)), errors="coerce"
+        ).fillna(0)
+        lr_max = lr_means.max() if lr_means.max() > 0 else 1.0
+        df["_norm_lr"] = lr_means / lr_max
+        summary = (
+            df.groupby(["source", "target"])
+            .agg(
+                interaction_count=("ligand_complex", "count"),
+                mean_magnitude=("_norm_pval", "mean"),
+                mean_specificity=("_norm_lr", "mean"),
+            )
+            .reset_index()
+        )
+        return summary
+    else:  # dcc
+        if not {"source", "target"}.issubset(df.columns):
+            return None
+        df = df.copy()
+        lfc = pd.to_numeric(
+            df.get("abs_log2FC", pd.Series(dtype=float)), errors="coerce"
+        ).fillna(0)
+        lfc_max = lfc.max() if lfc.max() > 0 else 1.0
+        df["_norm_lfc"] = lfc / lfc_max
+        summary = (
+            df.groupby(["source", "target"])
+            .agg(
+                interaction_count=("source", "count"),
+                mean_magnitude=("_norm_lfc", "mean"),
+                mean_specificity=("_norm_lfc", "mean"),
+            )
+            .reset_index()
+        )
+        return summary
+
+
+def _build_ccc_reference_bubble(df, file_type, title):
+    if file_type == "json":
+        required = {
+            "source",
+            "target",
+            "ligand_complex",
+            "receptor_complex",
+            "lr_means",
+            "cellphone_pvals",
+        }
+        if not required.issubset(df.columns):
+            return html.Div("Bubble plot is not available for this reference file.")
+        plot_df = df.copy()
+        plot_df["interaction"] = (
+            plot_df["ligand_complex"].astype(str)
+            + " -> "
+            + plot_df["receptor_complex"].astype(str)
+        )
+        plot_df["lr_means"] = pd.to_numeric(
+            plot_df["lr_means"], errors="coerce"
+        ).fillna(0)
+        plot_df["cellphone_pvals"] = pd.to_numeric(
+            plot_df["cellphone_pvals"], errors="coerce"
+        ).clip(lower=1e-300)
+        plot_df["neg_log10_pval"] = -np.log10(plot_df["cellphone_pvals"])
+        # Cap display rows for performance
+        plot_df = plot_df.sort_values("cellphone_pvals", ascending=True).head(1000)
+        fig = px.scatter(
+            plot_df,
+            x="target",
+            y="interaction",
+            size="lr_means",
+            color="neg_log10_pval",
+            color_continuous_scale="RdYlBu_r",
+            hover_data=[
+                "source",
+                "ligand_complex",
+                "receptor_complex",
+                "lr_means",
+                "cellphone_pvals",
+            ],
+            title=title,
+            labels={
+                "neg_log10_pval": "-log10(p-value)",
+                "target": "Target cell type",
+                "interaction": "Interaction (Ligand → Receptor)",
+            },
+        )
+        fig.update_layout(xaxis_tickangle=45)
+        return dcc.Graph(figure=fig)
+    else:  # dcc
+        required = {"source", "target", "lr_pair", "abs_log2FC"}
+        if not required.issubset(df.columns):
+            return html.Div("Bubble plot is not available for this reference file.")
+        plot_df = df.copy()
+        plot_df["cell_pair"] = (
+            plot_df["source"].astype(str) + " → " + plot_df["target"].astype(str)
+        )
+        plot_df["abs_log2FC"] = pd.to_numeric(
+            plot_df["abs_log2FC"], errors="coerce"
+        ).fillna(0)
+        plot_df["log2FC"] = pd.to_numeric(plot_df["log2FC"], errors="coerce").fillna(0)
+        fig = px.scatter(
+            plot_df,
+            x="cell_pair",
+            y="lr_pair",
+            size="abs_log2FC",
+            color="log2FC",
+            color_continuous_scale="RdBu_r",
+            color_continuous_midpoint=0,
+            hover_data=["source", "target", "ligand", "receptor", "abs_log2FC"],
+            title=title,
+            labels={
+                "cell_pair": "Cell pair (Source → Target)",
+                "lr_pair": "Interaction (Ligand → Receptor)",
+                "log2FC": "log2 Fold Change",
+            },
+        )
+        fig.update_layout(xaxis_tickangle=45)
+        return dcc.Graph(figure=fig)
+
+
+def _build_ccc_reference_filter_options(df):
+    """Build source/target filter options from reference data if available."""
+    if df is None or df.empty:
+        fallback = [{"label": "All", "value": "_all_"}]
+        return fallback, "_all_", fallback, "_all_"
+
+    source_values = []
+    target_values = []
+    if "source" in df.columns:
+        source_values = [
+            str(v) for v in df["source"].dropna().astype(str).tolist() if v.strip()
+        ]
+    if "target" in df.columns:
+        target_values = [
+            str(v) for v in df["target"].dropna().astype(str).tolist() if v.strip()
+        ]
+
+    source_options = _build_options(list(dict.fromkeys(source_values)))
+    target_options = _build_options(list(dict.fromkeys(target_values)))
+    return source_options, "_all_", target_options, "_all_"
+
+
+def _filter_ccc_reference_df(
+    df, file_type, source_filter, target_filter, interaction_filter
+):
+    """Filter and optionally cap reference CCC rows for display components."""
+    filtered = df.copy()
+
+    if "source" in filtered.columns and source_filter and source_filter != "_all_":
+        filtered = filtered[filtered["source"].astype(str) == str(source_filter)]
+    if "target" in filtered.columns and target_filter and target_filter != "_all_":
+        filtered = filtered[filtered["target"].astype(str) == str(target_filter)]
+
+    render_limit = _resolve_render_limit(interaction_filter)
+    display_df = filtered.copy()
+    if file_type == "json":
+        if "cellphone_pvals" in display_df.columns:
+            display_df = display_df.assign(
+                _sort_pval=pd.to_numeric(display_df["cellphone_pvals"], errors="coerce")
+            ).sort_values("_sort_pval", ascending=True)
+            display_df = display_df.drop(columns=["_sort_pval"])
+        elif "lr_means" in display_df.columns:
+            display_df = display_df.assign(
+                _sort_lr=pd.to_numeric(display_df["lr_means"], errors="coerce")
+            ).sort_values("_sort_lr", ascending=False)
+            display_df = display_df.drop(columns=["_sort_lr"])
+    else:
+        if "abs_log2FC" in display_df.columns:
+            display_df = display_df.assign(
+                _sort_fc=pd.to_numeric(display_df["abs_log2FC"], errors="coerce")
+            ).sort_values("_sort_fc", ascending=False)
+            display_df = display_df.drop(columns=["_sort_fc"])
+
+    return filtered, display_df.head(render_limit)
+
+
+def _render_ccc_reference_outputs(df, file_type, selected_filename):
+    """Render summary table, bubble plot, and network plot for reference CCC data."""
+    table_output = _build_ccc_reference_table(df, file_type)
+    bubble_output = _build_ccc_reference_bubble(
+        df, file_type, f"Cell-Cell Communication - {selected_filename}"
+    )
+
+    summary_df = _build_ccc_reference_summary(df, file_type)
+    if summary_df is not None and not summary_df.empty:
+        network_fig = create_network_plot(summary_df)
+        network_output = dcc.Graph(figure=network_fig)
+    else:
+        network_output = html.Div(
+            "Network plot is not available for this reference file."
+        )
+
+    return html.Div(
+        [
+            dbc.Alert(
+                f"Loaded reference CCC outputs for {selected_filename}.",
+                color="success",
+                className="mb-3",
+            ),
+            html.H5("Summary Table"),
+            table_output,
+            html.Hr(),
+            html.H5("Bubble Plot"),
+            bubble_output,
+            html.Hr(),
+            html.H5("Network Plot"),
+            network_output,
+        ]
     )
 
 
@@ -536,6 +815,89 @@ def register_ccc_callbacks(app):
         return options, options[0]["value"]
 
     @app.callback(
+        Output("ccc-reference-results-container", "children"),
+        Output("ccc-source-filter-dropdown", "options", allow_duplicate=True),
+        Output("ccc-source-filter-dropdown", "value", allow_duplicate=True),
+        Output("ccc-target-filter-dropdown", "options", allow_duplicate=True),
+        Output("ccc-target-filter-dropdown", "value", allow_duplicate=True),
+        Input("ccc-reference-select-button", "n_clicks"),
+        Input("ccc-reference-file-radio", "value"),
+        State("ccc-reference-select-button", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def display_reference_ccc_results(_button_click, selected_filename, n_clicks):
+        trigger_id = ctx.triggered_id
+        if trigger_id == "ccc-reference-file-radio" and not n_clicks:
+            return no_update, no_update, no_update, no_update, no_update
+        if not n_clicks:
+            return no_update, no_update, no_update, no_update, no_update
+
+        if not selected_filename:
+            return (
+                dbc.Alert("Select a reference file first.", color="warning"),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
+
+        file_map = read_downloaded_reference_file_map(
+            lambda fn: "cellphonedb" in fn.lower()
+        )
+        selected_lower = selected_filename.lower()
+        file_path = None
+        for name, path in file_map.items():
+            if name.lower() == selected_lower:
+                file_path = path
+                break
+
+        if file_path is None:
+            return (
+                dbc.Alert(
+                    "Selected reference file is not available locally.", color="danger"
+                ),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
+
+        try:
+            df, file_type = _load_ccc_reference_file(selected_filename, file_path)
+        except Exception as exc:
+            logger.exception(
+                "Failed to parse CCC reference file '%s': %s", selected_filename, exc
+            )
+            return (
+                dbc.Alert(f"Failed to parse file: {exc}", color="danger"),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
+
+        update_state_store(
+            CCC_reference_results={
+                "results": df,
+                "file_type": file_type,
+                "selected_filename": selected_filename,
+            },
+            CCC_active_context="reference",
+        )
+
+        source_options, source_value, target_options, target_value = (
+            _build_ccc_reference_filter_options(df)
+        )
+
+        return (
+            _render_ccc_reference_outputs(df, file_type, selected_filename),
+            source_options,
+            source_value,
+            target_options,
+            target_value,
+        )
+
+    @app.callback(
         Output("ccc-source-filter-dropdown", "options"),
         Output("ccc-source-filter-dropdown", "value"),
         Output("ccc-target-filter-dropdown", "options"),
@@ -684,6 +1046,8 @@ def register_ccc_callbacks(app):
                 CCC_results={"results": prepared_results, "cache_key": cache_key}
             )
 
+        update_state_store(CCC_active_context="uploaded")
+
         # Filter and format the results for display
 
         display_results = _display_rows(prepared_results)
@@ -730,6 +1094,7 @@ def register_ccc_callbacks(app):
         Output("ccc-summary-container", "children", allow_duplicate=True),
         Output("ccc-bubble-plot-container", "children", allow_duplicate=True),
         Output("ccc-network-plot-container", "children", allow_duplicate=True),
+        Output("ccc-reference-results-container", "children", allow_duplicate=True),
         Input("ccc-apply-filters-button", "n_clicks"),
         State("ccc-source-filter-dropdown", "value"),
         State("ccc-target-filter-dropdown", "value"),
@@ -762,9 +1127,44 @@ def register_ccc_callbacks(app):
             - A Dash Graph displaying the filtered bubble plot.
         """
         if not n_clicks or n_clicks == 0:
-            return no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
 
         history = get_state_store()
+        active_context = history.get("CCC_active_context", "uploaded")
+
+        if active_context == "reference":
+            ref_payload = history.get("CCC_reference_results", {})
+            reference_results = ref_payload.get("results")
+            file_type = ref_payload.get("file_type")
+            selected_filename = ref_payload.get("selected_filename", "reference file")
+
+            if reference_results is None or file_type is None:
+                return (
+                    "done",
+                    no_update,
+                    no_update,
+                    no_update,
+                    dbc.Alert(
+                        "No reference CCC results available to filter.",
+                        color="warning",
+                    ),
+                )
+
+            filtered_results, display_results = _filter_ccc_reference_df(
+                reference_results,
+                file_type,
+                source_filter,
+                target_filter,
+                interaction_filter,
+            )
+
+            reference_output = _render_ccc_reference_outputs(
+                display_results,
+                file_type,
+                selected_filename,
+            )
+            return "done", no_update, no_update, no_update, reference_output
+
         liana_results = history.get("CCC_results", {}).get("results")
 
         if liana_results is None:
@@ -777,6 +1177,7 @@ def register_ccc_callbacks(app):
                 ),
                 "",
                 "",
+                no_update,
             )
 
         filtered_results = filter_liana_results(
@@ -857,6 +1258,7 @@ def register_ccc_callbacks(app):
             results_table,
             dcc.Graph(figure=fig),
             dcc.Graph(figure=network_fig),
+            no_update,
         )
 
     @app.callback(
@@ -864,6 +1266,7 @@ def register_ccc_callbacks(app):
         Output("ccc-summary-container", "children", allow_duplicate=True),
         Output("ccc-bubble-plot-container", "children", allow_duplicate=True),
         Output("ccc-network-plot-container", "children", allow_duplicate=True),
+        Output("ccc-reference-results-container", "children", allow_duplicate=True),
         Output("ccc-show-network-labels", "value"),
         Input("ccc-reset-filters-button", "n_clicks"),
         prevent_initial_call=True,
@@ -882,9 +1285,45 @@ def register_ccc_callbacks(app):
 
         """
         if not n_clicks or n_clicks == 0:
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update, no_update
 
         history = get_state_store()
+        active_context = history.get("CCC_active_context", "uploaded")
+
+        if active_context == "reference":
+            ref_payload = history.get("CCC_reference_results", {})
+            reference_results = ref_payload.get("results")
+            file_type = ref_payload.get("file_type")
+            selected_filename = ref_payload.get("selected_filename", "reference file")
+
+            if reference_results is None or file_type is None:
+                return (
+                    "done",
+                    no_update,
+                    no_update,
+                    no_update,
+                    dbc.Alert(
+                        "No reference CCC results available to reset.",
+                        color="warning",
+                    ),
+                    [True],
+                )
+
+            reference_output = _render_ccc_reference_outputs(
+                reference_results,
+                file_type,
+                selected_filename,
+            )
+
+            return (
+                "done",
+                no_update,
+                no_update,
+                no_update,
+                reference_output,
+                [True],
+            )
+
         liana_results = history.get("CCC_results", {}).get("results")
 
         if liana_results is None:
@@ -897,6 +1336,7 @@ def register_ccc_callbacks(app):
                 ),
                 "",
                 "",
+                no_update,
                 [True],
             )
 
@@ -933,6 +1373,7 @@ def register_ccc_callbacks(app):
             results_table,
             dcc.Graph(figure=fig),
             dcc.Graph(figure=network_fig),
+            no_update,
             [True],
         )
 
