@@ -1,6 +1,7 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 
+
 def create_differential_expression_panel():
     return html.Div(
         style={
@@ -12,74 +13,113 @@ def create_differential_expression_panel():
         },
         children=[
             html.H2("Differential Expression Analysis"),
-            dbc.Row([
-                dbc.Col(
-                    dcc.Dropdown(
-                        id="grouping-variable-dropdown",
-                        options=[
-                            {"label": "Upload a dataset to select grouping variable", "value": ""},
-                        ],
-                        placeholder="Select Grouping Variable",
-                        searchable=True,
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id="grouping-variable-dropdown",
+                            options=[
+                                {
+                                    "label": "Upload a dataset to select grouping variable",
+                                    "value": "",
+                                },
+                            ],
+                            placeholder="Select Grouping Variable",
+                            searchable=True,
+                        )
+                    ),
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id="group1-dropdown",
+                            options=[
+                                {
+                                    "label": "Select a grouping variable to select group 1",
+                                    "value": "",
+                                },
+                            ],
+                            placeholder="Select Group 1",
+                            searchable=True,
+                        )
+                    ),
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id="group2-dropdown",
+                            options=[
+                                {
+                                    "label": "Select a grouping variable to select group 2",
+                                    "value": "",
+                                },
+                            ],
+                            placeholder="Select Group 2",
+                            searchable=True,
+                        )
+                    ),
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id="celltype-variable-dropdown",
+                            options=[
+                                {
+                                    "label": "Upload a dataset to select cell type column",
+                                    "value": "",
+                                },
+                            ],
+                            placeholder="Select Cell Type Column",
+                            searchable=True,
+                        )
+                    ),
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id="celltype-dropdown",
+                            options=[
+                                {
+                                    "label": "Select a cell type column to load cell types",
+                                    "value": "",
+                                },
+                            ],
+                            placeholder="Select Cell Type",
+                            searchable=True,
+                        )
+                    ),
+                ]
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dbc.Button(
+                            "Run Differential Expression Analysis",
+                            id="run-differential-expression-analysis-button",
+                            n_clicks=0,
+                            color="primary",
+                            className="mb-3",
+                        ),
+                        width="auto",
+                    ),
+                    dbc.Col(
+                        dbc.Button(
+                            "Advanced Options",
+                            id="differential-expression-advanced-options-button",
+                            n_clicks=0,
+                            color="secondary",
+                            className="mb-3",
+                        ),
+                        width="auto",
+                    ),
+                ],
+                style={"marginTop": "8px"},
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dcc.Loading(
+                            html.Div(
+                                id="differential-expression-loading-signal",
+                                style={"display": "none"},
+                            )
+                        ),
+                        width="auto",
                     )
-                ),
-                dbc.Col(
-                    dcc.Dropdown(
-                        id="group1-dropdown",
-                        options=[
-                            {"label": "Select a grouping variable to select group 1", "value": ""},
-                        ],
-                        placeholder="Select Group 1",
-                        searchable=True,
-                    )
-                ),
-                dbc.Col(
-                    dcc.Dropdown(
-                        id="group2-dropdown",
-                        options=[
-                            {"label": "Select a grouping variable to select group 2", "value": ""},
-                        ],
-                        placeholder="Select Group 2",
-                        searchable=True,
-                    )
-                ),
-                dbc.Col(
-                    dcc.Dropdown(
-                        id="celltype-variable-dropdown",
-                        options=[
-                            {"label": "Upload a dataset to select cell type column", "value": ""},
-                        ],
-                        placeholder="Select Cell Type Column",
-                        searchable=True,
-                    )
-                ),
-                dbc.Col(
-                    dcc.Dropdown(
-                        id="celltype-dropdown",
-                        options=[
-                            {"label": "Select a cell type column to load cell types", "value": ""},
-                        ],
-                        placeholder="Select Cell Type",
-                        searchable=True,
-                    )
-                ),
-            ]),
-            dbc.Row([
-                dbc.Col(
-                    dbc.Button("Run Differential Expression Analysis", id="run-differential-expression-analysis-button", n_clicks=0, color="primary", className="mb-3"),
-                    width="auto"
-                ),
-                dbc.Col(
-                    dbc.Button("Advanced Options", id="differential-expression-advanced-options-button", n_clicks=0, color="secondary", className="mb-3"),
-                    width="auto"
-                )
-            ], style={"marginTop": "8px"}),
-            dbc.Row([
-                dbc.Col(
-                    dcc.Loading(html.Div(id="differential-expression-loading-signal", style={"display": "none"})),
-                    width="auto"
-                )
-            ]),
+                ]
+            ),
             dbc.Tabs(
                 id="differential-expression-output-tabs",
                 active_tab="pseudobulk-tab",
@@ -120,7 +160,40 @@ def create_differential_expression_panel():
                             style={"padding": "15px"},
                         ),
                     ),
+                    dbc.Tab(
+                        label="Reference",
+                        tab_id="de-reference-tab",
+                        children=html.Div(
+                            id="de-reference-container",
+                            style={"padding": "15px"},
+                            children=[
+                                html.P("Select a downloaded DE reference file."),
+                                dcc.RadioItems(
+                                    id="de-reference-file-radio",
+                                    options=[
+                                        {
+                                            "label": "No downloaded DE reference files found.",
+                                            "value": "",
+                                        },
+                                    ],
+                                    value="",
+                                    labelStyle={
+                                        "display": "block",
+                                        "marginBottom": "6px",
+                                    },
+                                ),
+                                dbc.Button(
+                                    "Display Reference",
+                                    id="de-reference-display-button",
+                                    n_clicks=0,
+                                    color="secondary",
+                                    className="mt-2",
+                                ),
+                            ],
+                        ),
+                    ),
                 ],
-            )
-        ], id="differential-expression-panel"
+            ),
+        ],
+        id="differential-expression-panel",
     )

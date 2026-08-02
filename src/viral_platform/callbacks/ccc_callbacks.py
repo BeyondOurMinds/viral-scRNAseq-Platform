@@ -1,19 +1,40 @@
 from dash import Input, Output, State, dash_table, html, no_update, dcc
-from viral_platform.state.dataset_store import get_working_dataset, get_state_store, update_state_store
-from viral_platform.analysis.CellCellLIANA import run_liana, filter_liana_results, liana_output_table, summarise_celltype_interactions
+from viral_platform.state.dataset_store import (
+    get_working_dataset,
+    get_state_store,
+    update_state_store,
+)
+from viral_platform.analysis.CellCellLIANA import (
+    run_liana,
+    filter_liana_results,
+    liana_output_table,
+    summarise_celltype_interactions,
+)
 import logging
 import math
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 import networkx as nx
+from viral_platform.utils.reference_file_utils import (
+    read_downloaded_reference_filenames,
+)
 
 
 logger = logging.getLogger(__name__)
 
-MAX_DROPDOWN_CATEGORY_VALUES = 500 # Maximum number of unique values allowed in the source/target dropdowns to prevent performance issues.
-DEFAULT_CCC_RENDER_ROWS = 1000 # Default number of rows to render in the CCC results table and bubble plot.
-MAX_CCC_RENDER_ROWS = 5000 # Maximum number of rows to render in the CCC results table and bubble plot to prevent performance issues.
+MAX_DROPDOWN_CATEGORY_VALUES = 500  # Maximum number of unique values allowed in the source/target dropdowns to prevent performance issues.
+DEFAULT_CCC_RENDER_ROWS = (
+    1000  # Default number of rows to render in the CCC results table and bubble plot.
+)
+MAX_CCC_RENDER_ROWS = 5000  # Maximum number of rows to render in the CCC results table and bubble plot to prevent performance issues.
+
+
+def _read_downloaded_cellphonedb_filenames():
+    return read_downloaded_reference_filenames(
+        lambda filename: "cellphonedb" in filename.lower()
+    )
+
 
 def make_sortable_table(df, table_id):
     """Create a sortable Dash DataTable from a DataFrame."""
@@ -28,6 +49,7 @@ def make_sortable_table(df, table_id):
         style_cell={"textAlign": "left", "padding": "6px", "fontSize": "13px"},
         style_header={"fontWeight": "600"},
     )
+
 
 def _build_options(values):
     """Normalize iterable values into unique Dash dropdown option dictionaries."""
@@ -165,7 +187,6 @@ def create_network_plot(summary, show_labels=True):
     G = nx.DiGraph()
 
     for _, row in summary.iterrows():
-
         G.add_edge(
             row["source"],
             row["target"],
@@ -186,9 +207,7 @@ def create_network_plot(summary, show_labels=True):
 
     degree = dict(G.degree())
 
-    weighted_degree = dict(
-        G.degree(weight="interactions")
-    )
+    weighted_degree = dict(G.degree(weight="interactions"))
 
     # --------------------------------------------------
     # Normalise node sizes
@@ -232,7 +251,6 @@ def create_network_plot(summary, show_labels=True):
     # --------------------------------------------------
 
     for u, v, data in G.edges(data=True):
-
         x0, y0 = pos[u]
         x1, y1 = pos[v]
 
@@ -241,22 +259,14 @@ def create_network_plot(summary, show_labels=True):
         # -----------------------------------
 
         if smax == smin:
-
             scaled = 0.5
 
         else:
-
-            scaled = (
-                data["magnitude"] - smin
-            ) / (
-                smax - smin
-            )
+            scaled = (data["magnitude"] - smin) / (smax - smin)
 
         scaled = max(0, min(1, scaled))
 
-        colour_index = int(
-            scaled * (len(colours) - 1)
-        )
+        colour_index = int(scaled * (len(colours) - 1))
 
         hex_colour = colours[colour_index]
 
@@ -264,7 +274,7 @@ def create_network_plot(summary, show_labels=True):
         g = int(hex_colour[3:5], 16)
         b = int(hex_colour[5:7], 16)
 
-        alpha = 0.35 + 0.45 * scaled   # 0.25–0.75
+        alpha = 0.35 + 0.45 * scaled  # 0.25–0.75
 
         colour = f"rgba({r},{g},{b},{alpha:.2f})"
 
@@ -273,49 +283,35 @@ def create_network_plot(summary, show_labels=True):
         # ------------------------------
 
         if wmax == wmin:
-
             edge_width = (min_edge + max_edge) / 2
 
         else:
-
-            edge_width = (
-                min_edge
-                + (data["interactions"] - wmin)
-                * (max_edge - min_edge)
-                / (wmax - wmin)
-            )
+            edge_width = min_edge + (data["interactions"] - wmin) * (
+                max_edge - min_edge
+            ) / (wmax - wmin)
 
         # ------------------------------
         # Edge trace
         # ------------------------------
 
         fig.add_trace(
-
             go.Scatter(
-
                 x=[x0, x1],
                 y=[y0, y1],
-
                 mode="lines",
-
                 line=dict(
                     width=edge_width,
                     color=colour,
                 ),
-
                 hoverinfo="text",
-
                 text=(
                     f"<b>{u}</b> → <b>{v}</b><br>"
                     f"Interactions: {data['interactions']}<br>"
                     f"Mean Magnitude: {data['magnitude']:.3f}<br>"
                     f"Mean Specificity: {data['specificity']:.3f}"
                 ),
-
                 showlegend=False,
-
             )
-
         )
 
         # ------------------------------
@@ -323,28 +319,20 @@ def create_network_plot(summary, show_labels=True):
         # ------------------------------
 
         fig.add_annotation(
-
             x=x1,
             y=y1,
-
             ax=x0,
             ay=y0,
-
             xref="x",
             yref="y",
-
             axref="x",
             ayref="y",
-
             showarrow=True,
-
             arrowhead=2,
             arrowsize=0.6,
             arrowwidth=max(1.5, edge_width * 0.6),
             arrowcolor=colour,
-
             text="",
-
         )
 
     # --------------------------------------------------
@@ -362,7 +350,6 @@ def create_network_plot(summary, show_labels=True):
     node_text = []
 
     for node in ordered_nodes:
-
         x, y = pos[node]
 
         node_x.append(x)
@@ -373,16 +360,11 @@ def create_network_plot(summary, show_labels=True):
         # ------------------------------
 
         if dmax == dmin:
-
             size = (min_node + max_node) / 2
 
         else:
-
-            size = (
-                min_node
-                + (degree[node] - dmin)
-                * (max_node - min_node)
-                / (dmax - dmin)
+            size = min_node + (degree[node] - dmin) * (max_node - min_node) / (
+                dmax - dmin
             )
 
         node_size.append(size)
@@ -392,16 +374,12 @@ def create_network_plot(summary, show_labels=True):
         # Colour
         # ------------------------------
 
-        node_colour.append(
-            weighted_degree[node]
-        )
+        node_colour.append(weighted_degree[node])
 
         node_text.append(
-
             f"<b>{node}</b><br>"
             f"Connected Cell Types: {degree[node]}<br>"
             f"Total Interactions: {weighted_degree[node]}"
-
         )
 
     # --------------------------------------------------
@@ -409,50 +387,29 @@ def create_network_plot(summary, show_labels=True):
     # --------------------------------------------------
 
     fig.add_trace(
-
         go.Scatter(
-
             x=node_x,
             y=node_y,
-
             mode="markers",
-
             hoverinfo="text",
-
             hovertext=node_text,
-
             marker=dict(
-
                 size=node_size,
-
                 color=node_colour,
-
                 colorscale="Viridis",
-
                 showscale=True,
-
                 colorbar=dict(
-
                     title="Node<br>Connectivity",
-
                     x=1.02,
-
                 ),
-
                 line=dict(
                     width=2,
                     color="black",
                 ),
-
             ),
-
             showlegend=False,
-
         )
-
     )
-
-    
 
     # --------------------------------------------------
     # Node Labels
@@ -491,107 +448,93 @@ def create_network_plot(summary, show_labels=True):
                 textangle=rotation,
             )
 
-
-
     # --------------------------------------------------
     # Dummy trace for edge colourbar
     # --------------------------------------------------
 
     fig.add_trace(
-
         go.Scatter(
-
             x=[None],
             y=[None],
-
             mode="markers",
-
             marker=dict(
-
                 colorscale="Turbo",
-
                 cmin=smin,
                 cmax=smax,
-
                 color=[smin],
-
                 size=0,
-
                 showscale=True,
-
                 colorbar=dict(
-
                     title="Edge<br>Strength",
-
                     tickvals=[
                         smin,
                         (smin + smax) / 2,
                         smax,
                     ],
-
                     ticktext=[
                         "Weak",
                         "Moderate",
                         "Strong",
                     ],
-
                     thickness=18,
-
                     len=0.75,
-
                     x=1.12,
-
                 ),
-
             ),
-
             hoverinfo="skip",
-
             showlegend=False,
-
         )
-
     )
     # --------------------------------------------------
     # Layout
     # --------------------------------------------------
 
     fig.update_layout(
-
         title="Cell-Cell Communication Network",
-
         template="plotly_white",
-
         height=780,
-
         hovermode="closest",
-
         xaxis=dict(
             visible=False,
             zeroline=False,
             showgrid=False,
             range=[-2.45, 2.45],
         ),
-
         yaxis=dict(
             visible=False,
             zeroline=False,
             showgrid=False,
             range=[-2.45, 2.45],
         ),
-
         margin=dict(
             l=20,
             r=20,
             t=60,
             b=20,
         ),
-
     )
 
     return fig
 
+
 def register_ccc_callbacks(app):
+    @app.callback(
+        Output("ccc-reference-file-radio", "options"),
+        Output("ccc-reference-file-radio", "value"),
+        Input("scmovir-refresh-token", "data"),
+        prevent_initial_call=False,
+    )
+    def populate_ccc_reference_files(_refresh_token):
+        filenames = _read_downloaded_cellphonedb_filenames()
+        if not filenames:
+            return (
+                [{"label": "No downloaded CellPhoneDB files found.", "value": ""}],
+                "",
+            )
+
+        options = [{"label": name, "value": name} for name in filenames]
+        return options, options[0]["value"]
+
     @app.callback(
         Output("ccc-source-filter-dropdown", "options"),
         Output("ccc-source-filter-dropdown", "value"),
@@ -619,7 +562,9 @@ def register_ccc_callbacks(app):
                 "",
             )
 
-        unique_values = adata.obs[grouping_column].dropna().astype(str).unique().tolist()
+        unique_values = (
+            adata.obs[grouping_column].dropna().astype(str).unique().tolist()
+        )
         unique_values = [v for v in unique_values if v.strip()]
 
         if len(unique_values) > MAX_DROPDOWN_CATEGORY_VALUES:
@@ -629,13 +574,15 @@ def register_ccc_callbacks(app):
                 len(unique_values),
                 MAX_DROPDOWN_CATEGORY_VALUES,
             )
-            warning_option = [{
-                "label": (
-                    f"Selected column has {len(unique_values)} distinct values. "
-                    "Choose a lower-cardinality grouping column."
-                ),
-                "value": "",
-            }]
+            warning_option = [
+                {
+                    "label": (
+                        f"Selected column has {len(unique_values)} distinct values. "
+                        "Choose a lower-cardinality grouping column."
+                    ),
+                    "value": "",
+                }
+            ]
             return warning_option, "", warning_option, ""
 
         options = _build_options(unique_values)
@@ -657,6 +604,7 @@ def register_ccc_callbacks(app):
             len(options),
         )
         return options, group1_value, options, group2_value
+
     @app.callback(
         Output("ccc-loading-signal", "children"),
         Output("ccc-summary-container", "children", allow_duplicate=True),
@@ -669,7 +617,9 @@ def register_ccc_callbacks(app):
         State("ccc-resource-dropdown", "value"),
         prevent_initial_call=True,
     )
-    def run_ccc_analysis(n_clicks, dataset_version, grouping_variable, method, resource):
+    def run_ccc_analysis(
+        n_clicks, dataset_version, grouping_variable, method, resource
+    ):
         """
         Runs the Cell-Cell Communication (CCC) analysis using the selected parameters.
 
@@ -692,12 +642,25 @@ def register_ccc_callbacks(app):
             - A Dash DataTable displaying the CCC analysis results.
         """
         if not n_clicks or n_clicks == 0:
-            return no_update, html.P("No cell-cell communication results yet. Run the analysis to see results here.", style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"},), "", ""
-        
+            return (
+                no_update,
+                html.P(
+                    "No cell-cell communication results yet. Run the analysis to see results here.",
+                    style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"},
+                ),
+                "",
+                "",
+            )
+
         adata = get_working_dataset()
         if adata is None:
-            return "done", "No dataset available for cell-cell communication analysis.", "", ""
-        
+            return (
+                "done",
+                "No dataset available for cell-cell communication analysis.",
+                "",
+                "",
+            )
+
         cache_key = {
             "dataset_version": str(dataset_version),
             "grouping_variable": str(grouping_variable),
@@ -707,17 +670,22 @@ def register_ccc_callbacks(app):
 
         history = get_state_store()
         cached_ccc = history.get("CCC_results", {})
-        if cached_ccc.get("cache_key") == cache_key and cached_ccc.get("results") is not None:
+        if (
+            cached_ccc.get("cache_key") == cache_key
+            and cached_ccc.get("results") is not None
+        ):
             prepared_results = cached_ccc["results"]
             logger.info("Reusing cached CCC results for key=%s", cache_key)
         else:
             # Run the CCC analysis using the provided parameters.
             liana_results = run_liana(adata, grouping_variable, method, resource)
             prepared_results = _prepare_liana_for_display(liana_results)
-            update_state_store(CCC_results={"results": prepared_results, "cache_key": cache_key})
-        
+            update_state_store(
+                CCC_results={"results": prepared_results, "cache_key": cache_key}
+            )
+
         # Filter and format the results for display
-        
+
         display_results = _display_rows(prepared_results)
 
         results_table = liana_output_table(display_results)
@@ -749,9 +717,14 @@ def register_ccc_callbacks(app):
         fig.update_layout(
             title="Cell-Cell Communication Bubble Plot",
         )
-        
-        return "done", results_table, dcc.Graph(figure=fig), dcc.Graph(figure=network_fig)
-    
+
+        return (
+            "done",
+            results_table,
+            dcc.Graph(figure=fig),
+            dcc.Graph(figure=network_fig),
+        )
+
     @app.callback(
         Output("ccc-loading-signal", "children", allow_duplicate=True),
         Output("ccc-summary-container", "children", allow_duplicate=True),
@@ -764,7 +737,9 @@ def register_ccc_callbacks(app):
         State("ccc-show-network-labels", "value"),
         prevent_initial_call=True,
     )
-    def apply_liana_filters(n_clicks, source_filter, target_filter, interaction_filter, show_labels_value):
+    def apply_liana_filters(
+        n_clicks, source_filter, target_filter, interaction_filter, show_labels_value
+    ):
         """
         Filters the LIANA results based on user-selected criteria.
 
@@ -778,7 +753,7 @@ def register_ccc_callbacks(app):
             The selected target cell type for filtering.
         interaction_filter : int
             The input number for filtering interactions.
-            
+
         Returns
         -------
         tuple
@@ -788,14 +763,22 @@ def register_ccc_callbacks(app):
         """
         if not n_clicks or n_clicks == 0:
             return no_update, no_update, no_update, no_update
-        
+
         history = get_state_store()
         liana_results = history.get("CCC_results", {}).get("results")
 
         if liana_results is None:
             logger.warning("No LIANA results found in state store for filtering.")
-            return "done", html.P("No cell-cell communication results available to filter.", style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"}), "", ""
-        
+            return (
+                "done",
+                html.P(
+                    "No cell-cell communication results available to filter.",
+                    style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"},
+                ),
+                "",
+                "",
+            )
+
         filtered_results = filter_liana_results(
             liana_results,
             source=source_filter if source_filter != "_all_" else None,
@@ -813,11 +796,12 @@ def register_ccc_callbacks(app):
         )
 
         show_labels = True in (show_labels_value or [])
-        network_fig = create_network_plot(summarise_celltype_interactions(filtered_results), show_labels=show_labels)
+        network_fig = create_network_plot(
+            summarise_celltype_interactions(filtered_results), show_labels=show_labels
+        )
 
         results_table = liana_output_table(display_results)
         results_table = make_sortable_table(results_table, "ccc-results-table")
-
 
         if target_filter == "_all_":
             fig = px.scatter(
@@ -836,9 +820,7 @@ def register_ccc_callbacks(app):
             )
             fig.update_coloraxes(colorbar_title_text="Interaction<br>strength")
 
-            fig.update_traces(
-                marker=dict(sizemode="area")
-            )
+            fig.update_traces(marker=dict(sizemode="area"))
             fig.update_layout(
                 title="Cell-Cell Communication Bubble Plot",
                 xaxis_title="Target Cell Type",
@@ -863,17 +845,20 @@ def register_ccc_callbacks(app):
 
             fig.update_xaxes(autorange="reversed")
 
-            fig.update_traces(
-                marker=dict(sizemode="area")
-            )
+            fig.update_traces(marker=dict(sizemode="area"))
             fig.update_layout(
                 title="Cell-Cell Communication Bubble Plot",
                 xaxis_title="Magnitude Rank (lower is stronger)",
                 yaxis_title="Interaction (Ligand → Receptor)",
             )
 
-        return "done", results_table, dcc.Graph(figure=fig), dcc.Graph(figure=network_fig)
-    
+        return (
+            "done",
+            results_table,
+            dcc.Graph(figure=fig),
+            dcc.Graph(figure=network_fig),
+        )
+
     @app.callback(
         Output("ccc-loading-signal", "children", allow_duplicate=True),
         Output("ccc-summary-container", "children", allow_duplicate=True),
@@ -884,28 +869,37 @@ def register_ccc_callbacks(app):
         prevent_initial_call=True,
     )
     def reset_liana_filters(n_clicks):
-        """"
+        """ "
         Reset the LIANA results filters and restore the original unfiltered results.
 
         Parameters
         ----------
         n_clicks : int
             Number of times the "Reset Filters" button has been clicked.
-        
+
         Returns
         -------
 
         """
         if not n_clicks or n_clicks == 0:
             return no_update, no_update, no_update, no_update, no_update
-        
+
         history = get_state_store()
         liana_results = history.get("CCC_results", {}).get("results")
 
         if liana_results is None:
             logger.warning("No LIANA results found in state store for filtering.")
-            return "done", html.P("No cell-cell communication results available to filter.", style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"}), "", "", [True]
-        
+            return (
+                "done",
+                html.P(
+                    "No cell-cell communication results available to filter.",
+                    style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"},
+                ),
+                "",
+                "",
+                [True],
+            )
+
         display_results = _display_rows(liana_results)
 
         results_table = liana_output_table(display_results)
@@ -934,7 +928,13 @@ def register_ccc_callbacks(app):
             title="Cell-Cell Communication Bubble Plot",
         )
 
-        return "done", results_table, dcc.Graph(figure=fig), dcc.Graph(figure=network_fig), [True]
+        return (
+            "done",
+            results_table,
+            dcc.Graph(figure=fig),
+            dcc.Graph(figure=network_fig),
+            [True],
+        )
 
     @app.callback(
         Output("ccc-export-loading-signal", "children"),
@@ -945,7 +945,9 @@ def register_ccc_callbacks(app):
         State("ccc-show-network-labels", "value"),
         prevent_initial_call=True,
     )
-    def export_network_fullscreen_html(n_clicks, source_filter, target_filter, show_labels_value):
+    def export_network_fullscreen_html(
+        n_clicks, source_filter, target_filter, show_labels_value
+    ):
         """Export a standalone fullscreen HTML for the current CCC network view."""
         if not n_clicks or n_clicks == 0:
             return no_update, no_update
@@ -958,8 +960,12 @@ def register_ccc_callbacks(app):
 
         filtered_results = filter_liana_results(
             liana_results,
-            source=source_filter if source_filter and source_filter != "_all_" else None,
-            target=target_filter if target_filter and target_filter != "_all_" else None,
+            source=source_filter
+            if source_filter and source_filter != "_all_"
+            else None,
+            target=target_filter
+            if target_filter and target_filter != "_all_"
+            else None,
         )
 
         show_labels = True in (show_labels_value or [])
@@ -1008,5 +1014,3 @@ def register_ccc_callbacks(app):
             "filename": "ccc_network_fullscreen.html",
             "type": "text/html",
         }
-
-
