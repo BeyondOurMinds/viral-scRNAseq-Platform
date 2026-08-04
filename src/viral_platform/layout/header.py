@@ -1,15 +1,37 @@
 from dash import html
 
 def create_header():
-    return html.Div(
-        style={
-            "backgroundColor": "#333",
-            "color": "white",
-            "padding": "10px",
-            "textAlign": "center",
-        },
+    """Persistent top toolbar rendered above all page content."""
+    return html.Header(
+        id="app-topbar",
+        className="app-topbar",
         children=[
-            html.H1("SCJoseki", style={"margin": "0", "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "letterSpacing": "1px"}),
-            html.P("A platform for analyzing viral single-cell RNA sequencing data", style={"margin": "0"}),
+            html.Div(
+                className="topbar-left",
+                children=[
+                    html.H1("SCJoseki", className="topbar-title"),
+                    html.P(
+                        "Single-Cell Analysis Platform",
+                        className="topbar-subtitle",
+                    ),
+                ],
+            ),
+            html.Div(
+                className="topbar-actions",
+                children=[
+                    html.Button(
+                        "Collapse Sidebar",
+                        id="sidebar-collapse-button",
+                        className="topbar-button",
+                        n_clicks=0,
+                    ),
+                    html.Button(
+                        "Theme",
+                        id="theme-toggle-button",
+                        className="topbar-button",
+                        n_clicks=0,
+                    ),
+                ],
+            ),
         ],
     )
