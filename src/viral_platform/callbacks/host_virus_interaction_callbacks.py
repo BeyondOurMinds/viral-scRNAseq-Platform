@@ -7,6 +7,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def _build_dropdown_options(values):
+    """Build deterministic dropdown options from string values."""
+    return [{"label": value, "value": value} for value in sorted({str(v) for v in values if str(v).strip()})]
+
 def make_sortable_table(df, table_id):
     """Create a sortable Dash DataTable from a DataFrame."""
     return dash_table.DataTable(
@@ -22,6 +27,27 @@ def make_sortable_table(df, table_id):
     )
 
 def register_host_virus_interaction_callbacks(app):
+    @app.callback(
+        Output("host-virus-interaction-dropdown", "options"),
+        Output("host-virus-interaction-dropdown", "value"),
+        Input("active-dataset-version", "data"),
+    )
+    def populate_host_virus_dropdown(_dataset_version):
+        """Populate selectable viral genes from shared viral-detection state."""
+        history = get_state_store()
+        raw_genes = history.get("viral_detection", {}).get("viral_genes", "")
+
+        if isinstance(raw_genes, str):
+            genes = [gene.strip() for gene in raw_genes.split(",") if gene.strip()]
+        else:
+            genes = [str(gene).strip() for gene in raw_genes if str(gene).strip()]
+
+        options = _build_dropdown_options(genes)
+        if not options:
+            return [{"label": "Run viral gene detection first", "value": ""}], ""
+
+        return options, options[0]["value"]
+
     @app.callback(
         Output("host-virus-interaction-loading-signal", "children"),
         Output("host-virus-interaction-results-container", "children"),

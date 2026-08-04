@@ -1,25 +1,41 @@
 import os
 import uuid
 import logging
+from pathlib import Path
 
-from dash import Input, Output, html, no_update
-import dash_uploader as du
+from dash import Input, Output, State, html, no_update
 
+from viral_platform.app import UPLOAD_FOLDER
 from viral_platform.io.loaders import load_file_from_path
 
 logger = logging.getLogger(__name__)
 
 def register_upload_callbacks(app):
-    # Callback using dash_uploader's built-in callback decorator to process uploaded files
-    # This callback is triggered when a file upload is completed. It reads the uploaded .h5ad file, extracts basic information about the dataset, and updates the UI with the results.
-    @du.callback(
-        [
-            Output("output-data-upload", "children"),
-            Output("active-dataset-version", "data"),
-        ],
-        id="file-uploader",
+    # Use an explicit Dash callback instead of du.callback so we can always
+    # return a valid output tuple in multi-page mount/unmount cycles.
+    @app.callback(
+        Output("output-data-upload", "children"),
+        Output("active-dataset-version", "data"),
+        Input("file-uploader", "isCompleted"),
+        State("file-uploader", "fileNames"),
+        State("file-uploader", "upload_id"),
+        prevent_initial_call=False,
     )
-    def process_uploaded_file(file_paths):
+    def process_uploaded_file(is_completed, file_names, upload_id):
+        if not is_completed:
+            # Component mount/navigation can emit a non-complete state. Never
+            # return None for a multi-output callback.
+            logger.info("Upload callback received non-complete state.")
+            return no_update, no_update
+
+        root_folder = Path(UPLOAD_FOLDER)
+        if upload_id:
+            root_folder = root_folder / str(upload_id)
+
+        file_paths = []
+        if file_names:
+            file_paths = [str(root_folder / filename) for filename in file_names]
+
         if not file_paths:
             logger.info("Upload callback triggered with no files.")
             return html.P("No file uploaded yet."), no_update

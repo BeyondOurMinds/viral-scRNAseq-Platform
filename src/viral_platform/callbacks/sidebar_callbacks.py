@@ -1,28 +1,64 @@
-from dash import Input, Output, State, no_update
+from dash import Input, Output
+
+from viral_platform.layout.navigation import NAV_ITEMS
+from viral_platform.layout.sidebar import path_to_token
+
+_SIDEBAR_EXPANDED_WIDTH = "280px"
+_SIDEBAR_COLLAPSED_WIDTH = "88px"
 
 
-_HASH_TO_TAB = {
-    "#qc-panel": "QC-tab",
-    "#preprocess-panel": "QC-tab",
-    "#differential-expression-panel": "DE-tab",
-}
+_LINK_CLASS_OUTPUTS = [
+    Output(f"sidebar-link-{path_to_token(item['path'])}", "className")
+    for item in NAV_ITEMS
+]
+_LINK_LABEL_STYLE_OUTPUTS = [
+    Output(f"sidebar-link-label-{path_to_token(item['path'])}", "style")
+    for item in NAV_ITEMS
+]
 
 
 def register_sidebar_callbacks(app):
-    @app.callback(Output("sidebar", "hidden"), Input("toggle-button", "n_clicks"))
-    def toggle_sidebar_visibility(n_clicks):
-        if not n_clicks:
-            return True
+    @app.callback(
+        *_LINK_CLASS_OUTPUTS,
+        Input("app-location", "pathname"),
+    )
+    def set_active_sidebar_link(pathname):
+        """Apply active CSS class to the link matching the current route."""
+        current_path = pathname or "/"
 
-        return n_clicks % 2 == 0
+        def _is_active(item_path):
+            if item_path == "/":
+                return current_path == "/"
+            return current_path == item_path
+
+        return tuple(
+            "sidebar-link active" if _is_active(item["path"]) else "sidebar-link"
+            for item in NAV_ITEMS
+        )
 
     @app.callback(
-        Output("layout-tabs", "active_tab"),
-        Input("page-location", "hash"),
-        State("layout-tabs", "active_tab"),
+        Output("app-sidebar", "style"),
+        Output("app-content-shell", "style"),
+        *_LINK_LABEL_STYLE_OUTPUTS,
+        Input("sidebar-collapse-button", "n_clicks"),
     )
-    def sync_active_tab_from_hash(location_hash, current_active_tab):
-        if not location_hash:
-            return current_active_tab or "QC-tab"
+    def toggle_sidebar_collapse(n_clicks):
+        """Collapse/expand sidebar by width and label visibility in one callback."""
+        collapsed = bool(n_clicks and n_clicks % 2 == 1)
 
-        return _HASH_TO_TAB.get(location_hash, no_update)
+        if collapsed:
+            sidebar_style = {"width": _SIDEBAR_COLLAPSED_WIDTH}
+            content_style = {
+                "marginLeft": _SIDEBAR_COLLAPSED_WIDTH,
+                "width": f"calc(100% - {_SIDEBAR_COLLAPSED_WIDTH})",
+            }
+            label_style = {"display": "none"}
+        else:
+            sidebar_style = {"width": _SIDEBAR_EXPANDED_WIDTH}
+            content_style = {
+                "marginLeft": _SIDEBAR_EXPANDED_WIDTH,
+                "width": f"calc(100% - {_SIDEBAR_EXPANDED_WIDTH})",
+            }
+            label_style = {"display": "inline"}
+
+        return (sidebar_style, content_style, *tuple(label_style for _ in NAV_ITEMS))

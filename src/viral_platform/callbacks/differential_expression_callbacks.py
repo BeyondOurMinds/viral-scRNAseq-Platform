@@ -645,8 +645,6 @@ def register_differential_expression_callbacks(app):
     @app.callback(
         Output("grouping-variable-dropdown", "options"),
         Output("grouping-variable-dropdown", "value"),
-        Output("ccc-grouping-dropdown", "options"),
-        Output("ccc-grouping-dropdown", "value"),
         Output("celltype-variable-dropdown", "options"),
         Output("celltype-variable-dropdown", "value"),
         Output("celltype-dropdown", "options"),
@@ -704,19 +702,35 @@ def register_differential_expression_callbacks(app):
             len(celltype_variable_options),
         )
 
-        ccc_grouping_options = grouping_options
-        ccc_grouping_value = grouping_value
-
         return (
             grouping_options,
             grouping_value,
-            ccc_grouping_options,
-            ccc_grouping_value,
             celltype_variable_options,
             celltype_variable_value,
             celltype_options,
             celltype_value,
         )
+
+    @app.callback(
+        Output("ccc-grouping-dropdown", "options"),
+        Output("ccc-grouping-dropdown", "value"),
+        Input("active-dataset-version", "data"),
+    )
+    def populate_ccc_grouping_dropdown(_dataset_version):
+        """Populate the CCC grouping dropdown from shared metadata state."""
+        if _dataset_version is None:
+            reset_state_store()
+
+        state = get_state_store()
+        metadata_info = state.get("metadata_info", {})
+        grouping_options = _build_options(metadata_info.get("groupable_columns", []))
+
+        if not grouping_options:
+            return [
+                {"label": "Upload a dataset to select grouping variable", "value": ""}
+            ], ""
+
+        return grouping_options, grouping_options[0]["value"]
 
     @app.callback(
         Output("celltype-dropdown", "options", allow_duplicate=True),

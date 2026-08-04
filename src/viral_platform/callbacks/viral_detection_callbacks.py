@@ -455,7 +455,6 @@ def register_vd_callbacks(app):
 	@app.callback(
 		Output("viral-gene-detection-loading-signal", "children"),
 		Output("viral-gene-detection-results-container", "children"),
-		Output("host-virus-interaction-dropdown", "options"),
 		Input("run-viral-gene-detection-button", "n_clicks"),
 		State("detection-method-radio", "value"),
 		State("custom-gene-list-input", "value"),
@@ -478,7 +477,7 @@ def register_vd_callbacks(app):
 		- loading text and detection-results component.
 		"""
 		if n_clicks is None or n_clicks == 0:
-			return no_update, "No viral gene detection results yet. Run the detection to see results here.", no_update
+			return no_update, "No viral gene detection results yet. Run the detection to see results here."
 
 		if selected_method == "automatic":
 			detected = find_viral_genes(selected_virus)
@@ -520,12 +519,10 @@ def register_vd_callbacks(app):
 				return (
 					"Automatic detection completed",
 					create_viral_gene_detection_results("\u2713", "#198754", gene_count_per_virus, detected_features, gene_entries, unique_count, detected_gene_sets=detected_gene_sets),
-					_build_gene_options(all_genes),
 				)
 			return (
 				"Automatic detection completed, but no viral genes were detected.",
 				create_viral_gene_detection_results("\u2717", "#dc3545", gene_count_per_virus, detected_features, [], 0, detected_gene_sets=detected_gene_sets),
-				_build_gene_options(all_genes),
 			)
 
 		detected = find_custom_viral_genes(custom_gene_list)
@@ -555,12 +552,10 @@ def register_vd_callbacks(app):
 			return (
 				"Custom detection completed",
 				create_viral_gene_detection_results("\u2713", "#198754", gene_count_per_virus, detected_features, gene_entries, unique_count, not_found, detected_gene_sets),
-				_build_gene_options(all_genes),
 			)
 		return (
 			"Custom detection completed, but no viral genes were detected.",
 			create_viral_gene_detection_results("\u2717", "#dc3545", gene_count_per_virus, detected_features, [], 0, not_found, detected_gene_sets),
-			_build_gene_options(all_genes),
 		)
 
 	@app.callback(
@@ -570,7 +565,6 @@ def register_vd_callbacks(app):
 		Output("detected-viral-unique-count", "children"),
 		Output("append-viral-genes-alert", "children"),
 		Output("append-viral-genes-alert", "is_open"),
-		Output("host-virus-interaction-dropdown", "options", allow_duplicate=True),
 		Input("remove-detected-viral-genes-button", "n_clicks"),
 		Input("append-viral-genes-button", "n_clicks"),
 		State("detected-viral-genes-dropdown", "value"),
@@ -688,5 +682,4 @@ def register_vd_callbacks(app):
 			str(len(genes)),
 			alert_text,
 			alert_open,
-			_build_gene_options(genes),
 		)
