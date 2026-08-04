@@ -115,6 +115,13 @@ def create_scmovir_reference_panel():
                         id="scmovir-reference-results",
                         className="mt-3",
                     ),
+                        dcc.Loading(
+                            type="default",
+                            children=html.Div(
+                                id="scmovir-download-action-loading-signal",
+                                style={"display": "none"},
+                            ),
+                        ),
                 ],
             ),
         ]

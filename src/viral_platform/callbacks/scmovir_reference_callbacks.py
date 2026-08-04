@@ -399,6 +399,7 @@ def register_scmovir_reference_callbacks(app):
         return _build_download_manager_table(downloaded_files)
 
     @app.callback(
+        Output("scmovir-download-action-loading-signal", "children"),
         Output("scmovir-refresh-token", "data"),
         Output("scmovir-reference-feedback", "children", allow_duplicate=True),
         Input({"type": "scmovir-download-button", "project_id": ALL}, "n_clicks"),
@@ -424,24 +425,54 @@ def register_scmovir_reference_callbacks(app):
         ]
 
         if not selected_file_types:
-            return refresh_token, dbc.Alert("Select at least one file for this project.", color="warning", className="mt-2 mb-0")
+            return "", refresh_token, dbc.Alert("Select at least one file for this project.", color="warning", className="mt-2 mb-0")
 
         db = ReferenceDatabase(_database_path())
         manager = ReferenceManager(db)
         try:
-            success_count = 0
+            downloaded_file_types = []
+            already_downloaded_file_types = []
+            failed_file_types = []
+
             for file_type in selected_file_types:
+                file_record = manager.get_file(project_id, file_type)
+                if file_record is not None:
+                    local_path = file_record["local_path"]
+                    if bool(file_record["is_downloaded"]) and local_path and Path(local_path).exists():
+                        already_downloaded_file_types.append(file_type)
+                        continue
+
                 if manager.download_file(project_id, file_type):
-                    success_count += 1
-            message = f"Downloaded {success_count}/{len(selected_file_types)} selected file(s)."
-            color = "success" if success_count else "danger"
+                    downloaded_file_types.append(file_type)
+                else:
+                    failed_file_types.append(file_type)
+
+            summary_lines = [
+                html.P(
+                    (
+                        f"Downloaded {len(downloaded_file_types)}/{len(selected_file_types)} selected file(s). "
+                        f"Already downloaded: {len(already_downloaded_file_types)}. "
+                        f"Failed: {len(failed_file_types)}."
+                    ),
+                    className="mb-1",
+                )
+            ]
+            if downloaded_file_types:
+                summary_lines.append(html.P(f"Downloaded: {', '.join(downloaded_file_types)}", className="mb-1"))
+            if already_downloaded_file_types:
+                summary_lines.append(html.P(f"Already downloaded: {', '.join(already_downloaded_file_types)}", className="mb-1"))
+            if failed_file_types:
+                summary_lines.append(html.P(f"Failed: {', '.join(failed_file_types)}", className="mb-0"))
+
+            color = "success" if not failed_file_types else ("warning" if downloaded_file_types or already_downloaded_file_types else "danger")
         finally:
             db.close()
 
         next_token = (refresh_token or 0) + 1
-        return next_token, dbc.Alert(message, color=color, className="mt-2 mb-0")
+        return "", next_token, dbc.Alert(summary_lines, color=color, className="mt-2 mb-0")
 
     @app.callback(
+        Output("scmovir-remove-action-loading-signal", "children"),
         Output("scmovir-refresh-token", "data", allow_duplicate=True),
         Output("scmovir-download-manager-feedback", "children"),
         Input("scmovir-manager-remove-button", "n_clicks"),
@@ -461,17 +492,39 @@ def register_scmovir_reference_callbacks(app):
         ]
 
         if not selected_file_ids:
-            return refresh_token, dbc.Alert("Select at least one downloaded file to remove.", color="warning", className="mb-0")
+            return "", refresh_token, dbc.Alert("Select at least one downloaded file to remove.", color="warning", className="mb-0")
 
         db = ReferenceDatabase(_database_path())
         manager = ReferenceManager(db)
-        removed_count = 0
+        removed_file_types = []
+        skipped_file_types = []
         try:
             for file_id in selected_file_ids:
-                manager.remove_downloaded_file(file_id["project_id"], file_id["file_type"])
-                removed_count += 1
+                project_id = file_id["project_id"]
+                file_type = file_id["file_type"]
+                file_record = manager.get_file(project_id, file_type)
+                was_downloaded = bool(file_record and file_record["is_downloaded"])
+                manager.remove_downloaded_file(project_id, file_type)
+                if was_downloaded:
+                    removed_file_types.append(f"{project_id}:{file_type}")
+                else:
+                    skipped_file_types.append(f"{project_id}:{file_type}")
         finally:
             db.close()
 
         next_token = (refresh_token or 0) + 1
-        return next_token, dbc.Alert(f"Removed {removed_count} downloaded file(s).", color="secondary", className="mb-0")
+        summary_lines = [
+            html.P(
+                (
+                    f"Removed {len(removed_file_types)}/{len(selected_file_ids)} selected file(s). "
+                    f"Skipped: {len(skipped_file_types)}."
+                ),
+                className="mb-1",
+            )
+        ]
+        if removed_file_types:
+            summary_lines.append(html.P(f"Removed: {', '.join(removed_file_types)}", className="mb-1"))
+        if skipped_file_types:
+            summary_lines.append(html.P(f"Skipped: {', '.join(skipped_file_types)}", className="mb-0"))
+
+        return "", next_token, dbc.Alert(summary_lines, color="secondary", className="mb-0")

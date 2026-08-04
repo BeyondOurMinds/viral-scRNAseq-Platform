@@ -1,4 +1,4 @@
-from dash import html
+from dash import dcc, html
 import dash_bootstrap_components as dbc
 
 
@@ -35,6 +35,13 @@ def create_scmovir_download_manager_panel():
             ),
             html.Div(id="scmovir-download-manager-feedback", className="mb-2"),
             html.Div(id="scmovir-download-manager-content"),
+            dcc.Loading(
+                type="default",
+                children=html.Div(
+                    id="scmovir-remove-action-loading-signal",
+                    style={"display": "none"},
+                ),
+            ),
             html.Div(
                 dbc.Button(
                     "Remove Selected",
