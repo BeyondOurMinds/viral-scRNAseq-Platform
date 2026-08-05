@@ -22,6 +22,11 @@ NAV_ITEMS = [
         "icon": "PP",
     },
     {
+        "label": "Cell Annotation",
+        "path": "/cell-annotation",
+        "icon": "CA",
+    },
+    {
         "label": "DE Analysis",
         "path": "/differential-expression",
         "icon": "DE",

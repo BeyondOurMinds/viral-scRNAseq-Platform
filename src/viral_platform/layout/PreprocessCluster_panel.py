@@ -11,7 +11,7 @@ def create_preprocess_cluster_panel():
             "margin": "0 0 20px 0",
         },
         children=[
-            html.H2("Preprocessing"),
+            html.H2("Preprocessing & Clustering"),
             dbc.Row([
                 dbc.Col(
                     dbc.Button("Run Preprocessing", id="run-preprocess-button", n_clicks=0, color="primary", className="mb-3"),

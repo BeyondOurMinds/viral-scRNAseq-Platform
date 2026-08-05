@@ -7,7 +7,7 @@ register_page(
     __name__,
     path="/host-virus-interaction",
     name="Host-Virus Interaction",
-    order=8,
+    order=9,
 )
 
 

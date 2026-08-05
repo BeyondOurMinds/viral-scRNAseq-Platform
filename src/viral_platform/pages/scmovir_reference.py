@@ -6,7 +6,7 @@ from viral_platform.layout.scMOVIRDownloadManager_panel import (
 )
 
 
-register_page(__name__, path="/scmovir-reference", name="scMOVIR Reference", order=10)
+register_page(__name__, path="/scmovir-reference", name="scMOVIR Reference", order=11)
 
 
 def layout():
