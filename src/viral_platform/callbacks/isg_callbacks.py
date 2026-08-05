@@ -12,6 +12,7 @@ from viral_platform.analysis.isg_analysis import (
 	normalize_gene_name,
 )
 from viral_platform.state.dataset_store import (
+	cache_results,
 	get_dataset,
 	get_state_store,
 	get_working_dataset,
@@ -266,7 +267,7 @@ def create_isg_detection_results(
 		"No ISGs currently selected.",
 	)
 
-	return html.Div(
+	result = html.Div(
 		[
 			dbc.Row(
 				[
@@ -446,6 +447,8 @@ def create_isg_detection_results(
 			),
 		]
 	)
+	cache_results(**{"isg-detection-results-container": result})
+	return result
 
 
 def isg_summary_results(adata):
@@ -604,7 +607,7 @@ def register_isg_callbacks(app):
 		- loading text, results component, summary section hidden flag.
 		"""
 		if n_clicks is None or n_clicks == 0:
-			return no_update, "No ISG detection results yet. Run the detection to see results here.", True
+			return no_update, no_update, no_update
 
 		if selected_method == "automatic":
 			detected_genes = find_isg_genes(selected_set)
@@ -908,7 +911,7 @@ def register_isg_callbacks(app):
 		- loading text and summary results component/message.
 		"""
 		if n_clicks is None or n_clicks == 0:
-			return no_update, "No ISG summary statistics yet. Run the analysis to see results here."
+			return no_update, no_update
 
 		history = get_state_store()
 		isg_features = history.get("isg_detection", {}).get("isg_features", "")
@@ -939,4 +942,6 @@ def register_isg_callbacks(app):
 		set_working_dataset(adata)
 		sync_state_with_dataset(adata)
 
-		return "done", isg_summary_results(adata)
+		result = isg_summary_results(adata)
+		cache_results(**{"isg-summary-results-container": result})
+		return "done", result

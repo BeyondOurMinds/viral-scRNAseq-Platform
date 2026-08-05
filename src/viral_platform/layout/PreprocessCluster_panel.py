@@ -1,5 +1,6 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+from viral_platform.state.dataset_store import get_cached_result
 
 def create_preprocess_cluster_panel():
     return html.Div(
@@ -28,6 +29,6 @@ def create_preprocess_cluster_panel():
                     width="auto"
                 )
             ]),
-            html.Div(id="preprocess-temp-container", children="Upload a dataset to run preprocessing.")
+            html.Div(id="preprocess-temp-container", children=get_cached_result("preprocess-temp-container", "Upload a dataset to run preprocessing.")),
         ], id="preprocess-panel"
     )

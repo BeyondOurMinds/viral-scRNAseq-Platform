@@ -1,5 +1,6 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+from viral_platform.state.dataset_store import get_cached_result
 
 def create_viral_gene_detection_panel():
     def help_icon():
@@ -219,12 +220,12 @@ def create_viral_gene_detection_panel():
             # Detection Results Container
             html.Div(
                 id="viral-gene-detection-results-container",
-                children=[
+                children=get_cached_result("viral-gene-detection-results-container", [
                     html.P(
                         "No viral gene detection results yet. Run the detection to see results here.",
                         style={"color": "#6c757d", "fontSize": "14px"},
                     )
-                ],
+                ]),
             ),
         ]
     )

@@ -1,6 +1,6 @@
 from dash import Input, Output, State, dash_table, html, no_update
 import dash_bootstrap_components as dbc
-from viral_platform.state.dataset_store import get_working_dataset, get_state_store
+from viral_platform.state.dataset_store import cache_results, get_working_dataset, get_state_store
 from viral_platform.analysis.host_virus_interaction import host_virus_interaction, get_features_for_gene
 import logging
 
@@ -75,7 +75,7 @@ def register_host_virus_interaction_callbacks(app):
             - A Dash DataTable displaying the host-virus interaction results.
         """
         if not n_clicks or n_clicks == 0:
-            return no_update, "No host-virus interaction results yet. Run the analysis to see results here.", ""
+            return no_update, no_update, no_update
         history = get_state_store()
         adata = get_working_dataset()
         if adata is None:
@@ -119,4 +119,9 @@ def register_host_virus_interaction_callbacks(app):
         )
         
         
-        return "", make_sortable_table(results, "host-virus-interaction-results-table"), hsi_summary
+        table = make_sortable_table(results, "host-virus-interaction-results-table")
+        cache_results(**{
+            "host-virus-interaction-results-container": table,
+            "host-virus-interaction-summary-container": hsi_summary,
+        })
+        return "", table, hsi_summary

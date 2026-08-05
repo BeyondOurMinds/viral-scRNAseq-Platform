@@ -1,5 +1,6 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+from viral_platform.state.dataset_store import get_cached_result
 
 def create_viral_burden_panel():
     return html.Div(
@@ -100,12 +101,12 @@ def create_viral_burden_panel():
                         tab_id="viral-burden-results-tab",
                         children=html.Div(
                             id="viral-burden-results-container",
-                            children=[
+                            children=get_cached_result("viral-burden-results-container", [
                                 html.P(
                                     "No viral burden results yet. Run the analysis to see results here.",
                                     style={"color": "#6c757d", "fontSize": "14px"},
                                 )
-                            ],
+                            ]),
                             style={"padding": "15px"},
                         ),
                     ),
@@ -114,7 +115,7 @@ def create_viral_burden_panel():
                         tab_id="viral-burden-infection-umap-tab",
                         children=html.Div(
                             id="viral-burden-infection-umap-container",
-                            children="Infection UMAP output will appear here.",
+                            children=get_cached_result("viral-burden-infection-umap-container", "Infection UMAP output will appear here."),
                             style={"padding": "15px"},
                         ),
                     ),
@@ -123,7 +124,7 @@ def create_viral_burden_panel():
                         tab_id="viral-burden-umap-tab",
                         children=html.Div(
                             id="viral-burden-umap-container",
-                            children="Viral burden UMAP output will appear here.",
+                            children=get_cached_result("viral-burden-umap-container", "Viral burden UMAP output will appear here."),
                             style={"padding": "15px"},
                         ),
                     ),
@@ -132,7 +133,7 @@ def create_viral_burden_panel():
                         tab_id="viral-burden-violin-tab",
                         children=html.Div(
                             id="viral-burden-violin-container",
-                            children="Violin plot output will appear here.",
+                            children=get_cached_result("viral-burden-violin-container", "Violin plot output will appear here."),
                             style={"padding": "15px"},
                         ),
                     ),
@@ -141,7 +142,7 @@ def create_viral_burden_panel():
                         tab_id="viral-burden-celltype-fraction-tab",
                         children=html.Div(
                             id="viral-burden-celltype-fraction-container",
-                            children="Cell type infection fraction output will appear here.",
+                            children=get_cached_result("viral-burden-celltype-fraction-container", "Cell type infection fraction output will appear here."),
                             style={"padding": "15px"},
                         ),
                     ),
@@ -156,7 +157,7 @@ def create_viral_burden_panel():
                             children=[
                                 html.Div(
                                     id="viral-burden-associations-title-container",
-                                    children=[
+                                    children=get_cached_result("viral-burden-associations-results-container", [
                                         html.H4(
                                             ["2.1 Viral Burden Association"],
                                             style={"display": "inline-flex", "alignItems": "center", "marginBottom": "2px"},
@@ -165,7 +166,7 @@ def create_viral_burden_panel():
                                             "Find viral burden associations or correlations",
                                             style={"color": "#6c757d", "marginBottom": "16px", "marginTop": "8px", "fontSize": "14px"},
                                         ),
-                                    ],
+                                    ]),
                                 ),
                             ],
                         ),
@@ -189,11 +190,11 @@ def create_viral_burden_panel():
                             children=[
                                 html.Div(
                                     id="viral-burden-associations-results-container",
-                                    children=[
+                                    children=get_cached_result("viral-burden-associations-significant-results-container", [
                                         html.P(
                                             "No viral burden associations results yet. Run the analysis to see results here.",
                                         ),
-                                    ],
+                                    ]),
                                 ),
                                 html.Div(
                                     id="viral-burden-associations-significant-results-container",
@@ -207,7 +208,6 @@ def create_viral_burden_panel():
                         )
                     ]),
                 ],
-                hidden=True,
                 style={"marginTop": "20px", "padding": "10px", "border": "1px solid #dee2e6", "borderRadius": "5px"},
             )
         ]

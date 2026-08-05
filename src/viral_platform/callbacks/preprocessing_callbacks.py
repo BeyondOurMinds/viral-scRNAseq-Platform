@@ -1,5 +1,5 @@
 from dash import Input, Output, State, no_update
-from viral_platform.state.dataset_store import get_working_dataset
+from viral_platform.state.dataset_store import cache_results, get_working_dataset
 from viral_platform.analysis.preprocessing import preprocess_data, run_clustering
 from viral_platform.plotting.elbow_plot import create_elbow_plot
 from viral_platform.plotting.clustering import create_umap_plot
@@ -28,7 +28,9 @@ def register_preprocessing_callbacks(app):
                 logger.warning("Preprocessing completed but no dataset found in state store.")
                 return "Preprocessing completed, but no dataset found.", no_update
             logger.info("Preprocessing completed successfully.")
-            return "Preprocessing completed successfully.", create_elbow_plot(adata)
+            result = create_elbow_plot(adata)
+            cache_results(**{"preprocess-temp-container": result})
+            return "Preprocessing completed successfully.", result
         except Exception as exc:
             logger.exception("Preprocessing failed: %s", str(exc))
             return f"Preprocessing failed: {str(exc)}", no_update

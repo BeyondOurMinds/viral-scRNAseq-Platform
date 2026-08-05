@@ -1,5 +1,6 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+from viral_platform.state.dataset_store import get_cached_result
 
 
 def create_differential_expression_panel():
@@ -129,7 +130,7 @@ def create_differential_expression_panel():
                         tab_id="pseudobulk-tab",
                         children=html.Div(
                             id="pseudobulk-container",
-                            children="Upload a dataset to run differential expression analysis.",
+                            children=get_cached_result("pseudobulk-container", "Upload a dataset to run differential expression analysis."),
                             style={"padding": "15px"},
                         ),
                     ),
@@ -138,7 +139,7 @@ def create_differential_expression_panel():
                         tab_id="de-table-tab",
                         children=html.Div(
                             id="de-table-container",
-                            children="DE table output will appear here.",
+                            children=get_cached_result("de-table-container", "DE table output will appear here."),
                             style={"padding": "15px"},
                         ),
                     ),
@@ -147,7 +148,7 @@ def create_differential_expression_panel():
                         tab_id="volcano-plot-tab",
                         children=html.Div(
                             id="volcano-plot-container",
-                            children="Volcano plot output will appear here.",
+                            children=get_cached_result("volcano-plot-container", "Volcano plot output will appear here."),
                             style={"padding": "15px"},
                         ),
                     ),
@@ -156,7 +157,7 @@ def create_differential_expression_panel():
                         tab_id="de-heatmap-tab",
                         children=html.Div(
                             id="de-heatmap-container",
-                            children="Heatmap output will appear here.",
+                            children=get_cached_result("de-heatmap-container", "Heatmap output will appear here."),
                             style={"padding": "15px"},
                         ),
                     ),
@@ -192,7 +193,7 @@ def create_differential_expression_panel():
                                 html.Hr(),
                                 html.Div(
                                     id="de-reference-results-container",
-                                    children="Reference DE outputs will appear here.",
+                                    children=get_cached_result("de-reference-results-container", "Reference DE outputs will appear here."),
                                 ),
                             ],
                         ),

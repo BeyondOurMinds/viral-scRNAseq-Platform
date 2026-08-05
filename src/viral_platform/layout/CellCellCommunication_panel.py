@@ -1,5 +1,6 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+from viral_platform.state.dataset_store import get_cached_result
 
 
 def create_CCC_panel():
@@ -103,7 +104,7 @@ def create_CCC_panel():
                         tab_id="ccc-summary-tab",
                         children=html.Div(
                             id="ccc-summary-container",
-                            children=[
+                            children=get_cached_result("ccc-summary-container", [
                                 html.P(
                                     "No cell-cell communication results yet. Run the analysis to see results here.",
                                     style={
@@ -112,7 +113,7 @@ def create_CCC_panel():
                                         "marginTop": "10px",
                                     },
                                 )
-                            ],
+                            ]),
                         ),
                     ),
                     dbc.Tab(
@@ -126,7 +127,7 @@ def create_CCC_panel():
                                         dbc.Col(
                                             html.Div(
                                                 id="ccc-bubble-plot-container",
-                                                children=[
+                                                children=get_cached_result("ccc-bubble-plot-container", [
                                                     html.P(
                                                         "No cell-cell communication results yet. Run the analysis to see results here.",
                                                         style={
@@ -135,7 +136,7 @@ def create_CCC_panel():
                                                             "marginTop": "10px",
                                                         },
                                                     )
-                                                ],
+                                                ]),
                                             ),
                                         )
                                     ]
@@ -154,7 +155,7 @@ def create_CCC_panel():
                                         dbc.Col(
                                             html.Div(
                                                 id="ccc-network-plot-container",
-                                                children=[
+                                                children=get_cached_result("ccc-network-plot-container", [
                                                     html.P(
                                                         "No cell-cell communication results yet. Run the analysis to see results here.",
                                                         style={
@@ -163,7 +164,7 @@ def create_CCC_panel():
                                                             "marginTop": "10px",
                                                         },
                                                     )
-                                                ],
+                                                ]),
                                             ),
                                         )
                                     ]
@@ -205,7 +206,7 @@ def create_CCC_panel():
                                 html.Hr(),
                                 html.Div(
                                     id="ccc-reference-results-container",
-                                    children="Reference CCC outputs will appear here.",
+                                    children=get_cached_result("ccc-reference-results-container", "Reference CCC outputs will appear here."),
                                 ),
                             ],
                         ),

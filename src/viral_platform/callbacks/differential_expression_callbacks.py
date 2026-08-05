@@ -9,6 +9,7 @@ from dash import Input, Output, State, html, dash_table, dcc, no_update, ctx
 import dash_bootstrap_components as dbc
 
 from viral_platform.state.dataset_store import (
+    cache_results,
     get_state_store,
     get_working_dataset,
     reset_state_store,
@@ -619,7 +620,7 @@ def register_differential_expression_callbacks(app):
             gene_heatmap_name if gene_heatmap_df is not None else "Not available"
         )
 
-        return html.Div(
+        result = html.Div(
             [
                 dbc.Alert(
                     f"Loaded reference outputs for {selected_name}.",
@@ -641,6 +642,8 @@ def register_differential_expression_callbacks(app):
                 heatmap_output,
             ]
         )
+        cache_results(**{"de-reference-results-container": result})
+        return result
 
     @app.callback(
         Output("grouping-variable-dropdown", "options"),
@@ -909,11 +912,11 @@ def register_differential_expression_callbacks(app):
         """Run differential expression analysis when the button is clicked."""
         if n_clicks == 0:
             return (
-                "",
-                "Upload a dataset to run differential expression analysis.",
-                "",
-                "",
-                "",
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
             )
 
         adata_for_values = get_working_dataset()
@@ -1199,4 +1202,10 @@ def register_differential_expression_callbacks(app):
             id="de-heatmap-accordion",
         )
 
+        cache_results(**{
+            "pseudobulk-container": pseudobulk_output,
+            "de-table-container": de_output,
+            "volcano-plot-container": volcano_output,
+            "de-heatmap-container": heatmap_output,
+        })
         return de_results, pseudobulk_output, de_output, volcano_output, heatmap_output

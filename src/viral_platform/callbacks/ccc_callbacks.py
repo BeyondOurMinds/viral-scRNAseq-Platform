@@ -3,6 +3,7 @@ import dash_bootstrap_components as dbc
 import numpy as np
 import pandas as pd
 from viral_platform.state.dataset_store import (
+    cache_results,
     get_working_dataset,
     get_state_store,
     update_state_store,
@@ -1082,11 +1083,18 @@ def register_ccc_callbacks(app):
             title="Cell-Cell Communication Bubble Plot",
         )
 
+        bubble_graph = dcc.Graph(figure=fig)
+        network_graph = dcc.Graph(figure=network_fig)
+        cache_results(**{
+            "ccc-summary-container": results_table,
+            "ccc-bubble-plot-container": bubble_graph,
+            "ccc-network-plot-container": network_graph,
+        })
         return (
             "done",
             results_table,
-            dcc.Graph(figure=fig),
-            dcc.Graph(figure=network_fig),
+            bubble_graph,
+            network_graph,
         )
 
     @app.callback(

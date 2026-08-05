@@ -9,7 +9,7 @@ from viral_platform.analysis.viral_gene_detection import (
 	list_viral_gene_sets,
 	normalize_gene_name,
 )
-from viral_platform.state.dataset_store import get_dataset, get_state_store, get_working_dataset, update_state_store
+from viral_platform.state.dataset_store import cache_results, get_dataset, get_state_store, get_working_dataset, update_state_store
 
 
 def help_icon():
@@ -205,7 +205,7 @@ def create_viral_gene_detection_results(pass_fail, color, gene_count_per_virus, 
 		detected_gene_sets,
 		"No viral genes currently selected.",
 	)
-	return html.Div(
+	result = html.Div(
 		[
 			dbc.Row(
 				[
@@ -362,6 +362,8 @@ def create_viral_gene_detection_results(pass_fail, color, gene_count_per_virus, 
 			dbc.Alert(id="append-viral-genes-alert", children="", color="danger", is_open=False, dismissable=True),
 		]
 	)
+	cache_results(**{"viral-gene-detection-results-container": result})
+	return result
 
 
 def register_vd_callbacks(app):
@@ -477,7 +479,7 @@ def register_vd_callbacks(app):
 		- loading text and detection-results component.
 		"""
 		if n_clicks is None or n_clicks == 0:
-			return no_update, "No viral gene detection results yet. Run the detection to see results here."
+			return no_update, no_update
 
 		if selected_method == "automatic":
 			detected = find_viral_genes(selected_virus)

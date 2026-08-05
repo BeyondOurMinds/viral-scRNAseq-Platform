@@ -4,7 +4,7 @@ from dash import Input, Output, State, html, no_update
 import plotly.express as px
 
 from viral_platform.plotting.QC_plots import create_qc_plots
-from viral_platform.state.dataset_store import get_state_store, get_working_dataset, set_working_dataset, update_state_store
+from viral_platform.state.dataset_store import cache_results, get_state_store, get_working_dataset, set_working_dataset, update_state_store
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +17,17 @@ def register_qc_callbacks(app):
     )
     def render_qc_plots(n_clicks):
         if n_clicks == 0:
-            return no_update, "Upload a dataset to view QC plots."
+            # Page remounts invoke this callback with the initial button value.
+            # Preserve the component restored from the shared results cache.
+            return no_update, no_update
         adata = get_working_dataset()
         if adata is None:
             logger.warning("QC plot generation requested without an active dataset.")
             return "done", "Upload a dataset to view QC plots."
         try:
-            return "done", create_qc_plots(adata)
+            result = create_qc_plots(adata)
+            cache_results(**{"qc-temp-container": result})
+            return "done", result
         except Exception:
             logger.exception("Failed to render QC plots.")
             return "done", "An error occurred while generating QC plots."
@@ -178,7 +182,9 @@ def register_qc_callbacks(app):
                 max_percent_mt,
                 adata.n_obs,
             )
-            return create_qc_plots(adata)
+            result = create_qc_plots(adata)
+            cache_results(**{"qc-temp-container": result, "qc-plot-container": result})
+            return result
         except Exception:
             logger.exception("Failed to apply QC filters.")
             return html.Div("An error occurred while applying QC filters.")

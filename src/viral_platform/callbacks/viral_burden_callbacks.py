@@ -1,7 +1,7 @@
 from dash import Input, Output, State, dash_table, html, no_update, dcc
 import dash_bootstrap_components as dbc
 from viral_platform.analysis.viral_burden_associations import calculate_viral_burden_associations, identify_significant_associations
-from viral_platform.state.dataset_store import get_working_dataset, get_state_store, set_working_dataset, sync_state_with_dataset
+from viral_platform.state.dataset_store import cache_results, get_working_dataset, get_state_store, set_working_dataset, sync_state_with_dataset
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -378,7 +378,7 @@ def register_viral_burden_callbacks(app):
         if n_clicks is None or n_clicks == 0:
             return (
                 no_update,
-                "No viral burden results yet. Run the analysis to see results here.",
+                no_update,
                 no_update,
                 no_update,
                 no_update,
@@ -484,13 +484,21 @@ def register_viral_burden_callbacks(app):
             celltype_col=celltype_col,
         )
 
+        result_components = {
+            "viral-burden-results-container": viral_burden_results(adata),
+            "viral-burden-infection-umap-container": infection_umap,
+            "viral-burden-umap-container": viral_burden_umap,
+            "viral-burden-violin-container": violin_plots,
+            "viral-burden-celltype-fraction-container": celltype_fraction_plot,
+        }
+        cache_results(**result_components)
         return (
             "done",
-            viral_burden_results(adata),
-            infection_umap,
-            viral_burden_umap,
-            violin_plots,
-            celltype_fraction_plot,
+            result_components["viral-burden-results-container"],
+            result_components["viral-burden-infection-umap-container"],
+            result_components["viral-burden-umap-container"],
+            result_components["viral-burden-violin-container"],
+            result_components["viral-burden-celltype-fraction-container"],
             False,
         )
     
@@ -504,7 +512,7 @@ def register_viral_burden_callbacks(app):
     def run_viral_burden_associations(n_clicks):
         """Run viral burden association analysis and render full/significant result tables."""
         if n_clicks is None or n_clicks == 0:
-            return no_update, "No viral burden association results yet. Run the analysis to see results here.", ""
+            return no_update, no_update, no_update
         
         adata = get_working_dataset()
         if adata is None:
@@ -527,10 +535,16 @@ def register_viral_burden_callbacks(app):
             logger.info("Viral burden association analysis completed successfully.")
             significant_associations_df = identify_significant_associations(associations_df)
             logger.info("Significant viral burden associations identified successfully.")
+            full_table = make_sortable_table(associations_df, "viral-burden-associations-table")
+            significant_table = make_sortable_table(significant_associations_df, "viral-burden-significant-associations-table")
+            cache_results(**{
+                "viral-burden-associations-results-container": full_table,
+                "viral-burden-associations-significant-results-container": significant_table,
+            })
             return (
                 "done",
-                make_sortable_table(associations_df, "viral-burden-associations-table"),
-                make_sortable_table(significant_associations_df, "viral-burden-significant-associations-table"),
+                full_table,
+                significant_table,
             )
         except Exception as e:
             logger.exception("Failed to calculate viral burden associations: %s", str(e))

@@ -1,5 +1,6 @@
 from dash import dcc, html
 import dash_bootstrap_components as dbc
+from viral_platform.state.dataset_store import get_cached_result
 
 
 def create_isg_panel():
@@ -226,12 +227,12 @@ def create_isg_panel():
 			),
 			html.Div(
 				id="isg-detection-results-container",
-				children=[
+				children=get_cached_result("isg-detection-results-container", [
 					html.P(
 						"No ISG detection results yet. Run the detection to see results here.",
 						style={"color": "#6c757d", "fontSize": "14px"},
 					)
-				],
+				]),
 			),
 			html.Div(
 				id="isg-summary-container",
@@ -270,12 +271,12 @@ def create_isg_panel():
 					),
 					html.Div(
 						id="isg-summary-results-container",
-						children=[
+						children=get_cached_result("isg-summary-results-container", [
 							html.P(
 								"No ISG summary statistics yet. Run the analysis to see results here.",
 								style={"color": "#6c757d", "fontSize": "14px"},
 							)
-						],
+						]),
 					),
 				],
 				hidden=True,

@@ -1,5 +1,6 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+from viral_platform.state.dataset_store import get_cached_result
 
 def create_host_virus_interaction_panel():
     return html.Div(
@@ -46,22 +47,22 @@ def create_host_virus_interaction_panel():
             # summary box
             html.Div(
                 id="host-virus-interaction-summary-container",
-                children=[
+                children=get_cached_result("host-virus-interaction-summary-container", [
                     html.P(
                         "No host-virus interaction results yet. Run the analysis to see results here.",
                         style={"color": "#6c757d", "fontSize": "14px", "marginTop": "10px"},
                     )
-                ],
+                ]),
             ),
             # results container
             html.Div(
                 id="host-virus-interaction-results-container",
-                children=[
+                children=get_cached_result("host-virus-interaction-results-container", [
                     html.P(
                         "",
                         style={"color": "#6c757d", "fontSize": "14px"},
                     )
-                ],
+                ]),
             ),
         ]
     )
