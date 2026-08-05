@@ -33,7 +33,19 @@ def create_umap_plot(adata=None):
             title="UMAP Plot Colored by Leiden Clusters",
             labels={"Cluster": "Leiden Cluster"}
         )
-        fig.update_layout(legend_title_text="Leiden Clusters")
+        fig.update_layout(
+            legend=dict(
+                title="Leiden Clusters",
+                orientation="h",
+                entrywidth=70,
+                entrywidthmode="pixels",
+                x=0.5,
+                xanchor="center",
+                y=-0.18,
+                yanchor="top"
+            ),
+            margin=dict(b=140)
+        )
         return dcc.Graph(figure=fig)
     except Exception as exc:
         logger.exception("Failed to create UMAP plot: %s", str(exc))
