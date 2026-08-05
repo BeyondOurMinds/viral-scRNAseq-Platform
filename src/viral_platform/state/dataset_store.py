@@ -1,6 +1,7 @@
 _DEFAULT_HISTORY = {
     "raw": None,
     "working": None,
+    "adata_pca": None,
     "metadata": False,
     "nFeature_RNA": {"min": None, "max": None},
     "nCount_RNA": {"min": None, "max": None},
@@ -29,6 +30,9 @@ _DEFAULT_HISTORY = {
         "selected_filename": None,
     },
     "CCC_active_context": "uploaded",
+    # Rendered Dash components are kept separately from AnnData so routed pages
+    # can be rebuilt without discarding plots and tables produced on another page.
+    "results_cache": {},
 }
 
 
@@ -37,6 +41,7 @@ def _new_history_state():
     return {
         "raw": None,
         "working": None,
+        "adata_pca": None,
         "metadata": False,
         "nFeature_RNA": {"min": None, "max": None},
         "nCount_RNA": {"min": None, "max": None},
@@ -65,6 +70,7 @@ def _new_history_state():
             "selected_filename": None,
         },
         "CCC_active_context": "uploaded",
+        "results_cache": {},
     }
 
 
@@ -88,6 +94,26 @@ def update_state_store(**kwargs):
         if key not in _DEFAULT_HISTORY:
             raise KeyError(f"Unknown dataset state key: {key}")
         history[key] = value
+
+
+def cache_results(**results):
+    """Cache rendered result components by stable container ID.
+
+    Dash Pages recreates a page's layout whenever it is revisited.  Keeping the
+    components in the shared, dataset-scoped state allows the corresponding
+    layout factory to repopulate its containers on remount.
+    """
+    history["results_cache"].update(results)
+
+
+def get_cached_result(result_id, default=None):
+    """Return a cached result component, or the panel's normal placeholder."""
+    return history["results_cache"].get(result_id, default)
+
+
+def clear_results_cache():
+    """Remove generated UI results, normally when a new dataset is loaded."""
+    history["results_cache"] = {}
 
 
 def _as_float(value):
@@ -126,6 +152,8 @@ def sync_state_with_dataset(adata):
 def set_dataset(adata):
     """Store the raw/original dataset and refresh derived state metadata."""
     history["raw"] = adata
+    history["adata_pca"] = None
+    clear_results_cache()
     sync_state_with_dataset(adata)
 
 
@@ -145,6 +173,21 @@ def set_working_dataset(adata):
     sync_state_with_dataset(adata)
 
 
+def set_pca_dataset(adata_pca):
+    """Store the PCA-ready AnnData object derived from the working dataset."""
+    history["adata_pca"] = adata_pca
+
+
+def get_pca_dataset():
+    """Return the PCA-ready AnnData object for the active session."""
+    return history["adata_pca"]
+
+
+def clear_pca_dataset():
+    """Clear the PCA-ready AnnData object from state."""
+    history["adata_pca"] = None
+
+
 def get_working_dataset():
     """Return the currently active working dataset."""
     return history["working"]
@@ -153,6 +196,7 @@ def get_working_dataset():
 def clear_working_dataset():
     """Clear the working dataset and reset derived state values."""
     history["working"] = None
+    history["adata_pca"] = None
     history["metadata"] = False
     history["nFeature_RNA"] = {"min": None, "max": None}
     history["nCount_RNA"] = {"min": None, "max": None}
@@ -181,3 +225,4 @@ def clear_working_dataset():
         "selected_filename": None,
     }
     history["CCC_active_context"] = "uploaded"
+    clear_results_cache()
