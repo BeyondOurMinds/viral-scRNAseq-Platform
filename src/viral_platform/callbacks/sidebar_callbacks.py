@@ -39,6 +39,8 @@ def register_sidebar_callbacks(app):
     @app.callback(
         Output("app-sidebar", "style"),
         Output("app-content-shell", "style"),
+        Output("sidebar-brand-copy", "style"),
+        Output("sidebar-footer", "style"),
         *_LINK_LABEL_STYLE_OUTPUTS,
         Input("sidebar-collapse-button", "n_clicks"),
     )
@@ -53,6 +55,8 @@ def register_sidebar_callbacks(app):
                 "width": f"calc(100% - {_SIDEBAR_COLLAPSED_WIDTH})",
             }
             label_style = {"display": "none"}
+            brand_copy_style = {"display": "none"}
+            footer_style = {"display": "none"}
         else:
             sidebar_style = {"width": _SIDEBAR_EXPANDED_WIDTH}
             content_style = {
@@ -60,5 +64,7 @@ def register_sidebar_callbacks(app):
                 "width": f"calc(100% - {_SIDEBAR_EXPANDED_WIDTH})",
             }
             label_style = {"display": "inline"}
+            brand_copy_style = {"display": "block"}
+            footer_style = {"display": "block"}
 
-        return (sidebar_style, content_style, *tuple(label_style for _ in NAV_ITEMS))
+        return (sidebar_style, content_style, brand_copy_style, footer_style, *tuple(label_style for _ in NAV_ITEMS))

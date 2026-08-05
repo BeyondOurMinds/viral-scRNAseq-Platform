@@ -13,10 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def _resolve_assets_folder():
-    """Prefer repository-level assets during development, fallback to package assets."""
-    repo_assets = Path(__file__).resolve().parents[2] / "assets"
-    if repo_assets.exists():
-        return repo_assets
+    """Use package-local assets so the logos and shell CSS travel together."""
     return Path(__file__).resolve().parent / "assets"
 
 
