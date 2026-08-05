@@ -104,7 +104,7 @@ def celltypist_umap(adata, color_by="SCJoseki_majority_celltype"):
             x="UMAP1",
             y="UMAP2",
             color=color_column,
-            title=f"CellTypist UMAP ({color_column})",
+            title="CellTypist UMAP",
             labels={color_column: color_column},
         )
     else:
@@ -122,4 +122,17 @@ def celltypist_umap(adata, color_by="SCJoseki_majority_celltype"):
         yaxis_title="UMAP2",
         legend_title_text=color_column if color_column is not None else "",
     )
+    fig.update_layout(
+            legend=dict(
+                title="Cell Types",
+                orientation="h",
+                entrywidth=250,
+                entrywidthmode="pixels",
+                x=0.5,
+                xanchor="center",
+                y=-0.18,
+                yanchor="top"
+            ),
+            margin=dict(b=140)
+        )
     return fig
