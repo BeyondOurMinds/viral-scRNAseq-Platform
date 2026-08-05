@@ -148,6 +148,14 @@ def sync_state_with_dataset(adata):
     if "percent.mt" in adata.obs:
         history["percent_mt"] = _as_float(adata.obs["percent.mt"].max())
 
+    # Metadata columns can be introduced by any analysis module (for example,
+    # cell annotation adds predicted-cell-type fields).  Refresh discovery here
+    # rather than only after upload so every metadata-driven dropdown sees the
+    # current AnnData ``obs`` schema when its page is mounted.
+    from viral_platform.analysis.metadata import discover_metadata
+
+    discover_metadata(adata)
+
 
 def set_dataset(adata):
     """Store the raw/original dataset and refresh derived state metadata."""

@@ -283,10 +283,18 @@ def register_viral_burden_callbacks(app):
         Input("active-dataset-version", "data"),
     )
     def populate_viral_burden_column_dropdowns(_dataset_version):
-        """Populate advanced column dropdowns from dataset metadata with auto-detected defaults."""
+        """Populate advanced column dropdowns from the current AnnData metadata."""
+        # Always use the live working dataset.  ``metadata_info`` is refreshed
+        # whenever a module updates it, but deriving from ``obs`` here prevents
+        # a stale state snapshot from hiding newly-created annotation columns.
+        adata = get_working_dataset()
         state = get_state_store()
         metadata_info = state.get("metadata_info", {})
-        groupable_columns = metadata_info.get("groupable_columns", [])
+        groupable_columns = list(metadata_info.get("groupable_columns", []))
+        if adata is not None:
+            groupable_columns = [
+                column for column in groupable_columns if column in adata.obs.columns
+            ]
         metadata_sample_columns = metadata_info.get("sample_columns", [])
 
         celltype_options = _build_options(groupable_columns)
@@ -298,7 +306,6 @@ def register_viral_burden_callbacks(app):
 
         default_celltype = _resolve_celltype_column(groupable_columns)
         default_condition = _resolve_condition_column(groupable_columns)
-        adata = get_working_dataset()
         obs_df = adata.obs if adata is not None else None
         default_sample = resolve_sample_column(
             sample_candidates,

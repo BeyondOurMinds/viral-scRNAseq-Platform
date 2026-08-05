@@ -655,7 +655,7 @@ def register_differential_expression_callbacks(app):
         Input("active-dataset-version", "data"),
     )
     def populate_metadata_driven_dropdowns(_dataset_version):
-        """Populate grouping-variable and celltype dropdowns from history metadata_info."""
+        """Populate grouping-variable and celltype dropdowns from current metadata."""
         if _dataset_version is None:
             # Browser was refreshed or is a new session with no upload — clear any
             # stale server-side state left over from a previous upload in this process.
@@ -664,7 +664,12 @@ def register_differential_expression_callbacks(app):
         state = get_state_store()
         metadata_info = state.get("metadata_info", {})
 
-        groupable_columns = metadata_info.get("groupable_columns", [])
+        adata = get_working_dataset()
+        groupable_columns = list(metadata_info.get("groupable_columns", []))
+        if adata is not None:
+            groupable_columns = [
+                column for column in groupable_columns if column in adata.obs.columns
+            ]
         grouping_options = _build_options(groupable_columns)
         grouping_value = grouping_options[0]["value"] if grouping_options else None
 
@@ -720,13 +725,19 @@ def register_differential_expression_callbacks(app):
         Input("active-dataset-version", "data"),
     )
     def populate_ccc_grouping_dropdown(_dataset_version):
-        """Populate the CCC grouping dropdown from shared metadata state."""
+        """Populate the CCC grouping dropdown from current metadata state."""
         if _dataset_version is None:
             reset_state_store()
 
         state = get_state_store()
         metadata_info = state.get("metadata_info", {})
-        grouping_options = _build_options(metadata_info.get("groupable_columns", []))
+        adata = get_working_dataset()
+        groupable_columns = list(metadata_info.get("groupable_columns", []))
+        if adata is not None:
+            groupable_columns = [
+                column for column in groupable_columns if column in adata.obs.columns
+            ]
+        grouping_options = _build_options(groupable_columns)
 
         if not grouping_options:
             return [

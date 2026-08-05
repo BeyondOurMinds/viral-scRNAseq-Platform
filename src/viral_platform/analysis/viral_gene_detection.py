@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from viral_platform.state.dataset_store import get_dataset
+from viral_platform.state.dataset_store import get_dataset, get_working_dataset
 
 
 VIRAL_SETS_PATH = Path("src/viral_platform/viral_gene_sets")
@@ -167,7 +167,9 @@ def find_viral_genes(value):
     - dict: per-virus detected genes/features and gene->feature mapping.
     """
 
-    adata = get_dataset()
+    adata = get_working_dataset() or get_dataset()
+    if adata is None:
+        raise ValueError("No active dataset found for viral gene detection.")
 
     available_sets = list_viral_gene_sets()
     detected = {
@@ -254,7 +256,9 @@ def find_custom_viral_genes(custom_gene_list):
     - dict: detected genes/features, gene->feature mapping, and not_found list.
     """
 
-    adata = get_dataset()
+    adata = get_working_dataset() or get_dataset()
+    if adata is None:
+        raise ValueError("No active dataset found for viral gene detection.")
 
     detected = {
         "features": set(),

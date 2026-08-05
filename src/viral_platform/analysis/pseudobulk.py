@@ -1,4 +1,8 @@
-from viral_platform.state.dataset_store import get_dataset, get_state_store
+from viral_platform.state.dataset_store import (
+    get_dataset,
+    get_state_store,
+    get_working_dataset,
+)
 import logging
 import decoupler as dc
 from anndata import AnnData
@@ -20,7 +24,9 @@ def subset_cells(grouping, group1, group2, celltype="All Cells", celltype_column
     Returns:
     - A new AnnData object containing only the cells that match the specified criteria.
     """
-    adata = get_dataset()
+    # Prefer the working dataset because downstream analyses depend on
+    # derived obs columns (for example CellTypist majority labels).
+    adata = get_working_dataset() or get_dataset()
     if adata is None:
         logger.warning("No working dataset available for subsetting.")
         return None
@@ -175,13 +181,18 @@ def create_pseudobulk(adata, grouping=None, sample_column="sampleID"):
     return padata
 
 def check_adata_type(adata):
-    if adata.X.dtype == 'float32':
-        #print("Adata shape:", adata.shape)
-        #print("Adata raw shape:", adata.raw.shape)
-        adata_pb = AnnData(
-            X=adata.raw.X.copy(),
-            obs=adata.obs.copy(),
-            var=adata.raw.var.copy(),
-            )
-        return adata_pb
-    return adata
+    """
+    Return an AnnData containing raw counts for pseudobulk analysis.
+    """
+
+    if "counts" not in adata.layers:
+        raise ValueError(
+            "Raw counts layer ('counts') not found. "
+            "Pseudobulk requires integer count data."
+        )
+
+    return AnnData(
+        X=adata.layers["counts"].copy(),
+        obs=adata.obs.copy(),
+        var=adata.var.copy(),
+    )

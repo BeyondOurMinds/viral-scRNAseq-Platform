@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from viral_platform.state.dataset_store import get_dataset
+from viral_platform.state.dataset_store import get_dataset, get_working_dataset
 
 
 ISG_SETS_PATH = Path("src/viral_platform/ISG_sets")
@@ -149,7 +149,7 @@ def find_isg_genes(set_name):
 	- dict: per-set detection payload with genes, features, mapping, and set totals.
 	"""
 
-	adata = get_dataset()
+	adata = get_working_dataset() or get_dataset()
 	if adata is None:
 		raise ValueError("No active dataset found for ISG detection.")
 
@@ -214,7 +214,7 @@ def find_custom_isg_genes(custom_gene_list):
 	- dict: detected genes/features, per-gene feature mapping, and not_found list.
 	"""
 
-	adata = get_dataset()
+	adata = get_working_dataset() or get_dataset()
 	if adata is None:
 		raise ValueError("No active dataset found for ISG detection.")
 
