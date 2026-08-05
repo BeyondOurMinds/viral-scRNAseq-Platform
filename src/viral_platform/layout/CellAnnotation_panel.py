@@ -24,7 +24,7 @@ def create_cell_annotation_panel():
             ]),
             
             dcc.Loading(html.Div(id="cell-annotation-loading-signal", style={"display": "none"})),
-            
-            html.Div(id="cell-annotation-temp-container", children="Upload a dataset to run cell annotation.")
+
+            html.Div(id="cell-annotation-container", children="Upload a dataset to run cell annotation.")
         ], id="cell-annotation-panel"
     )
