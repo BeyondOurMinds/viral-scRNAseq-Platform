@@ -13,6 +13,9 @@ _DEFAULT_HISTORY = {
         "cell_types": [],
         "sample_columns": [],
     },
+    "DE_results": {
+        "results_by_celltype": {},
+    },
     "viral_detection": {
         "viral_genes": [],
         "viral_features": [],
@@ -52,6 +55,9 @@ def _new_history_state():
             "cell_type_columns": [],
             "cell_types": [],
             "sample_columns": [],
+        },
+        "DE_results": {
+            "results_by_celltype": {},
         },
         "viral_detection": {
             "viral_genes": [],
@@ -215,6 +221,9 @@ def clear_working_dataset():
         "cell_type_columns": [],
         "cell_types": [],
         "sample_columns": [],
+    }
+    history["DE_results"] = {
+        "results_by_celltype": {},
     }
     history["viral_detection"] = {
         "viral_genes": [],

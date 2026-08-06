@@ -13,6 +13,7 @@ from viral_platform.state.dataset_store import (
     get_state_store,
     get_working_dataset,
     reset_state_store,
+    update_state_store,
 )
 from viral_platform.analysis.pseudobulk import subset_cells
 from viral_platform.analysis.differential_expression import run_differential_expression
@@ -1219,4 +1220,5 @@ def register_differential_expression_callbacks(app):
             "volcano-plot-container": volcano_output,
             "de-heatmap-container": heatmap_output,
         })
+        update_state_store("DE_results", {"results_by_celltype": de_results_by_celltype})
         return de_results, pseudobulk_output, de_output, volcano_output, heatmap_output
