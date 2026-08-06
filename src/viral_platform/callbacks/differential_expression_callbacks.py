@@ -242,10 +242,9 @@ def _build_top_genes_heatmap_from_results(adata, results_df, grouping, celltype_
     heatmap_z = (heatmap_values - gene_means) / gene_stds
 
     sample_labels = [
-        f"{sample} ({grp})"
-        for sample, grp in zip(
-            ordered_obs.index.astype(str),
-            ordered_obs[grouping].astype(str),
+        f"{grp}_{i+1}"
+        for i, grp in enumerate(
+            ordered_obs[grouping].astype(str)
         )
     ]
 
@@ -262,7 +261,35 @@ def _build_top_genes_heatmap_from_results(adata, results_df, grouping, celltype_
         },
         title=f"Top 20 DE genes heatmap for {celltype_label}",
     )
-    heatmap_fig.update_layout(xaxis_tickangle=45)
+    heatmap_fig.update_layout(
+        height=max(500, 40 * len(available_top_genes) + 180),
+        margin=dict(
+            l=150,
+            r=30,
+            t=70,
+            b=120,
+        ),
+        xaxis_tickangle=45,
+    )
+    heatmap_fig.update_yaxes(
+        tickmode="linear",
+        dtick=1,
+    )
+    sample_names = ordered_obs.index.astype(str).to_numpy()
+
+    customdata = np.tile(
+        sample_names,
+        (len(available_top_genes), 1)
+    )
+
+    heatmap_fig.update_traces(
+        customdata=customdata,
+        hovertemplate=(
+            "Sample: %{customdata}<br>"
+            "Gene: %{y}<br>"
+            "Z-score: %{z:.2f}<extra></extra>"
+        )
+    )
     return dcc.Graph(figure=heatmap_fig)
 
 
@@ -322,7 +349,7 @@ def _build_cross_population_heatmap(gene_heatmap_df, title):
     if not np.isfinite(vmax) or vmax <= 0:
         vmax = 1.0
 
-    heatmap_height = max(520, min(1400, int(18 * len(matrix_df.index)) + 180))
+    heatmap_height = max(600, min(1400, int(30 * len(matrix_df.index)) + 180))
 
     fig = px.imshow(
         matrix_values,
@@ -345,7 +372,11 @@ def _build_cross_population_heatmap(gene_heatmap_df, title):
     fig.update_layout(
         height=heatmap_height,
         xaxis_tickangle=45,
-        margin=dict(l=70, r=30, t=90, b=120),
+        margin=dict(l=150, r=30, t=90, b=120),
+    )
+    fig.update_yaxes(
+        tickmode="linear",
+        dtick=1,
     )
     return dcc.Graph(figure=fig)
 
@@ -1220,5 +1251,5 @@ def register_differential_expression_callbacks(app):
             "volcano-plot-container": volcano_output,
             "de-heatmap-container": heatmap_output,
         })
-        update_state_store("DE_results", {"results_by_celltype": de_results_by_celltype})
+        update_state_store(**{"DE_results": {"results_by_celltype": de_results_by_celltype}})
         return de_results, pseudobulk_output, de_output, volcano_output, heatmap_output
