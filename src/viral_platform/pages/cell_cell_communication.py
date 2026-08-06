@@ -7,7 +7,7 @@ register_page(
     __name__,
     path="/cell-cell-communication",
     name="Cell-Cell Communication",
-    order=10,
+    order=11,
 )
 
 

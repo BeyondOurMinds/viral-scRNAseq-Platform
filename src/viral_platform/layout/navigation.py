@@ -32,6 +32,11 @@ NAV_ITEMS = [
         "icon": "DE",
     },
     {
+        "label": "Pathway Enrichment",
+        "path": "/pathway-enrichment",
+        "icon": "PE",
+    },
+    {
         "label": "Viral Detection",
         "path": "/viral-detection",
         "icon": "VD",

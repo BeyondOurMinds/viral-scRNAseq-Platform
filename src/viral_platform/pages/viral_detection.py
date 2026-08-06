@@ -3,7 +3,7 @@ from dash import html, register_page
 from viral_platform.layout.ViralGeneDetection_panel import create_viral_gene_detection_panel
 
 
-register_page(__name__, path="/viral-detection", name="Viral Detection", order=6)
+register_page(__name__, path="/viral-detection", name="Viral Detection", order=7)
 
 
 def layout():
