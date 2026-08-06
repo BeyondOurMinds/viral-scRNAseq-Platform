@@ -37,5 +37,14 @@ def create_pathway_enrichment_panel():
                     width="auto"
                 ),
             ]),
-        ],
+
+            # loading signal
+            dcc.Loading(
+                type="default",
+                children=html.Div(id="pathway-enrichment-loading-signal", style={"display": "none"}),
+            ),
+
+            # results container
+            html.Div(id="pathway-enrichment-results-container", children=get_cached_result("pathway-enrichment-results-container", ["No pathway enrichment results yet. Run the analysis to see results here."])),
+        ], id="pathway-enrichment-panel"
     )

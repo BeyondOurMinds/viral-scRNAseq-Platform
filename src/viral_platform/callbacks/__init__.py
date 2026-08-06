@@ -10,6 +10,7 @@ from .host_virus_interaction_callbacks import register_host_virus_interaction_ca
 from .ccc_callbacks import register_ccc_callbacks
 from .scmovir_reference_callbacks import register_scmovir_reference_callbacks
 from .cell_annotation_callbacks import register_cell_annotation_callbacks
+from .pathway_enrichment_callbacks import register_pathway_enrichment_callbacks
 
 __all__ = [
 	"register_sidebar_callbacks",
@@ -18,6 +19,7 @@ __all__ = [
 	"register_preprocessing_callbacks",
     "register_cell_annotation_callbacks",
 	"register_differential_expression_callbacks",
+    "register_pathway_enrichment_callbacks",
 	"register_vd_callbacks",
 	"register_viral_burden_callbacks",
 	"register_isg_callbacks",

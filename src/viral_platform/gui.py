@@ -1,7 +1,7 @@
 import logging
 
 from viral_platform.app import create_app
-from viral_platform.callbacks import register_sidebar_callbacks, register_upload_callbacks, register_qc_callbacks, register_preprocessing_callbacks, register_differential_expression_callbacks, register_vd_callbacks, register_viral_burden_callbacks, register_isg_callbacks, register_host_virus_interaction_callbacks, register_ccc_callbacks, register_scmovir_reference_callbacks, register_cell_annotation_callbacks
+from viral_platform.callbacks import register_sidebar_callbacks, register_upload_callbacks, register_qc_callbacks, register_preprocessing_callbacks, register_differential_expression_callbacks, register_vd_callbacks, register_viral_burden_callbacks, register_isg_callbacks, register_host_virus_interaction_callbacks, register_ccc_callbacks, register_scmovir_reference_callbacks, register_cell_annotation_callbacks, register_pathway_enrichment_callbacks
 from viral_platform.layout.layout import create_layout
 
 logger = logging.getLogger(__name__)
@@ -16,6 +16,7 @@ class ViralApp:
         register_preprocessing_callbacks(self.app)
         register_cell_annotation_callbacks(self.app)
         register_differential_expression_callbacks(self.app)
+        register_pathway_enrichment_callbacks(self.app)
         register_vd_callbacks(self.app)
         register_viral_burden_callbacks(self.app)
         register_isg_callbacks(self.app)
