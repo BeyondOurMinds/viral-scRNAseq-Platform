@@ -48,7 +48,7 @@ def register_preprocessing_callbacks(app):
             elbow_fig = go.Figure(elbow_layout.children[0].figure)
             if n_pcs is not None:
                 elbow_fig.add_vline(
-                    x=n_pcs,
+                    x=n_pcs-1,
                     line_dash="dash",
                     line_color="red",
                     annotation_text=f"Selected PCs: {n_pcs}",
