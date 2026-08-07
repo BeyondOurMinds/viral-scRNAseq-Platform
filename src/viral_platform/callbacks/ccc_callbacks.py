@@ -191,7 +191,7 @@ def _build_ccc_reference_bubble(df, file_type, title):
                 "interaction": "Interaction (Ligand → Receptor)",
             },
         )
-        fig.update_layout(xaxis_tickangle=45)
+        fig.update_layout(template="plotly_white", xaxis_tickangle=45)
         return dcc.Graph(figure=fig)
     else:  # dcc
         required = {"source", "target", "lr_pair", "abs_log2FC"}
@@ -221,7 +221,7 @@ def _build_ccc_reference_bubble(df, file_type, title):
                 "log2FC": "log2 Fold Change",
             },
         )
-        fig.update_layout(xaxis_tickangle=45)
+        fig.update_layout(template="plotly_white", xaxis_tickangle=45)
         return dcc.Graph(figure=fig)
 
 
@@ -805,6 +805,7 @@ def register_ccc_callbacks(app):
         prevent_initial_call=False,
     )
     def populate_ccc_reference_files(_refresh_token):
+        print("Refreshing CCC reference files")
         filenames = _read_downloaded_cellphonedb_filenames()
         if not filenames:
             return (
@@ -1080,6 +1081,7 @@ def register_ccc_callbacks(app):
 
         fig.update_yaxes(categoryorder="category ascending")
         fig.update_layout(
+            template="plotly_white",
             title="Cell-Cell Communication Bubble Plot",
         )
 
@@ -1231,6 +1233,7 @@ def register_ccc_callbacks(app):
 
             fig.update_traces(marker=dict(sizemode="area"))
             fig.update_layout(
+                template="plotly_white",
                 title="Cell-Cell Communication Bubble Plot",
                 xaxis_title="Target Cell Type",
                 yaxis_title="Interaction (Ligand → Receptor)",
@@ -1256,6 +1259,7 @@ def register_ccc_callbacks(app):
 
             fig.update_traces(marker=dict(sizemode="area"))
             fig.update_layout(
+                template="plotly_white",
                 title="Cell-Cell Communication Bubble Plot",
                 xaxis_title="Magnitude Rank (lower is stronger)",
                 yaxis_title="Interaction (Ligand → Receptor)",
@@ -1373,6 +1377,7 @@ def register_ccc_callbacks(app):
 
         fig.update_yaxes(categoryorder="category ascending")
         fig.update_layout(
+            template="plotly_white",
             title="Cell-Cell Communication Bubble Plot",
         )
 
@@ -1423,7 +1428,7 @@ def register_ccc_callbacks(app):
             show_labels=show_labels,
         )
 
-        network_fig.update_layout(autosize=True, margin=dict(l=20, r=20, t=60, b=20))
+        network_fig.update_layout(template="plotly_white", autosize=True, margin=dict(l=20, r=20, t=60, b=20))
 
         figure_html = pio.to_html(
             network_fig,

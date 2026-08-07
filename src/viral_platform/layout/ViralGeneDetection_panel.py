@@ -79,7 +79,7 @@ def create_viral_gene_detection_panel():
 
     return html.Div(
         style={
-            "backgroundColor": "#e9ecef",
+            "backgroundColor": "#eff7ff",
             "padding": "20px",
             "borderRadius": "5px",
             "border": "1px solid #000000",
@@ -191,16 +191,7 @@ def create_viral_gene_detection_panel():
                             ],
                             style={"display": "flex", "alignItems": "flex-start"},
                         ),
-                        dbc.Col(
-                            dbc.Button(
-                                [html.Span("🔍 ", style={"fontSize": "12px"}), "View Supported Viruses"],
-                                color="light",
-                                size="sm",
-                                style={"whiteSpace": "nowrap", "border": "1px solid #dee2e6"},
-                            ),
-                            width="auto",
-                            style={"display": "flex", "alignItems": "center"},
-                        ),
+                        
                     ],
                     align="center",
                 ),

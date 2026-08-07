@@ -3,7 +3,7 @@ import dash_bootstrap_components as dbc
 
 
 _PANEL_STYLE = {
-    "backgroundColor": "#e9ecef",
+    "backgroundColor": "#eff7ff",
     "padding": "20px",
     "borderRadius": "5px",
     "border": "1px solid #000000",
@@ -15,7 +15,7 @@ def create_scmovir_reference_panel():
     return html.Div(
         children=[
             dcc.Store(id="scmovir-active-filters", data=None),
-            dcc.Store(id="scmovir-refresh-token", data=0),
+            
 
             html.Div(
                 style=_PANEL_STYLE,

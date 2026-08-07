@@ -10,6 +10,7 @@ def create_layout():
         className="app-shell",
         children=[
             dcc.Store(id="active-dataset-version", data=None, storage_type="memory"),
+            dcc.Store(id="scmovir-refresh-token", data=0),
             dcc.Store(id="ui-theme-mode", data="light", storage_type="local"),
             # Location is used for active-link styling and page routing state.
             dcc.Location(id="app-location", refresh=False),

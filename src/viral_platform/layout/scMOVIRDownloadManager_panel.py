@@ -3,7 +3,7 @@ import dash_bootstrap_components as dbc
 
 
 _PANEL_STYLE = {
-    "backgroundColor": "#e9ecef",
+    "backgroundColor": "#eff7ff",
     "padding": "20px",
     "borderRadius": "5px",
     "border": "1px solid #000000",

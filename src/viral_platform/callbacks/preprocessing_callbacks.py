@@ -73,7 +73,9 @@ def register_preprocessing_callbacks(app):
             logger.info("Apply PCA selection clicked. n_clicks=%s, n_pcs=%s", n_clicks, n_pcs)
             run_clustering(n_dims=n_pcs)
             logger.info("PCA selection applied successfully with %d PCs.", n_pcs)
-            return f"PCA selection applied with {n_pcs} PCs.", create_umap_plot()
+            graph = create_umap_plot()
+            cache_results(**{"selected-pcs-output": graph})
+            return f"PCA selection applied with {n_pcs} PCs.", graph
         except Exception as exc:
             logger.exception("Failed to apply PCA selection: %s", str(exc))
             return f"Failed to apply PCA selection: {str(exc)}", no_update

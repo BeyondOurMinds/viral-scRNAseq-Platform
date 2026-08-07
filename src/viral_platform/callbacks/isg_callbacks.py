@@ -584,7 +584,6 @@ def register_isg_callbacks(app):
 	@app.callback(
 		Output("isg-detection-loading-signal", "children"),
 		Output("isg-detection-results-container", "children"),
-		Output("isg-summary-container", "hidden"),
 		Input("run-isg-detection-button", "n_clicks"),
 		State("isg-detection-method-radio", "value"),
 		State("custom-isg-gene-list-input", "value"),
@@ -604,10 +603,10 @@ def register_isg_callbacks(app):
 		- n_clicks, selected_method, custom_gene_list, selected_set.
 
 		Outputs:
-		- loading text, results component, summary section hidden flag.
+		- loading text, results component.
 		"""
 		if n_clicks is None or n_clicks == 0:
-			return no_update, no_update, no_update
+			return no_update, no_update
 
 		if selected_method == "automatic":
 			detected_genes = find_isg_genes(selected_set)
@@ -662,7 +661,6 @@ def register_isg_callbacks(app):
 						unique_count,
 						detected_gene_sets=detected_gene_sets,
 					),
-					False,
 				)
 
 			return (
@@ -677,14 +675,12 @@ def register_isg_callbacks(app):
 					0,
 					detected_gene_sets=detected_gene_sets,
 				),
-				True,
 			)
 
 		if not custom_gene_list:
 			return (
 				"Custom ISG detection requires a gene list.",
 				html.P("Provide a custom ISG list and run detection again.", style={"color": "#6c757d", "fontSize": "14px"}),
-				True,
 			)
 
 		detected = find_custom_isg_genes(custom_gene_list)
@@ -727,7 +723,6 @@ def register_isg_callbacks(app):
 					not_found,
 					detected_gene_sets,
 				),
-				False,
 			)
 
 		return (
@@ -743,7 +738,6 @@ def register_isg_callbacks(app):
 				not_found,
 				detected_gene_sets,
 			),
-			True,
 		)
 
 	@app.callback(

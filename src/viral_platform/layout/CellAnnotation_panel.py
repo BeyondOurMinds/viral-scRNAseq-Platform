@@ -5,7 +5,7 @@ import dash_bootstrap_components as dbc
 def create_cell_annotation_panel():
     return html.Div(
         style={
-            "backgroundColor": "#e9ecef",
+            "backgroundColor": "#eff7ff",
             "padding": "20px",
             "borderRadius": "5px",
             "border": "1px solid #000000",

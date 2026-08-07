@@ -23,7 +23,7 @@ def create_qc_plots(adata):
         points=False,
         title="nCount_RNA",
     )
-    ncount_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Counts")
+    ncount_fig.update_layout(template="plotly_white", showlegend=False, xaxis_title="", yaxis_title="Counts")
 
     nfeature_fig = px.violin(
         adata.obs,
@@ -32,7 +32,7 @@ def create_qc_plots(adata):
         points=False,
         title="nFeature_RNA",
     )
-    nfeature_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Features")
+    nfeature_fig.update_layout(template="plotly_white", showlegend=False, xaxis_title="", yaxis_title="Features")
 
     percent_mt_fig = px.violin(
         adata.obs,
@@ -41,7 +41,7 @@ def create_qc_plots(adata):
         points=False,
         title="percent.mt",
     )
-    percent_mt_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Percent")
+    percent_mt_fig.update_layout(template="plotly_white", showlegend=False, xaxis_title="", yaxis_title="Percent")
 
     return html.Div([
         dcc.Graph(figure=ncount_fig, id="ncount-violin"),

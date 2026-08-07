@@ -189,7 +189,7 @@ def _build_volcano_component(results_df, title):
         title=f"Volcano plot for {title}",
         hover_data=hover_fields,
     )
-    fig.update_layout(legend_title_text="", yaxis_title="-log10(padj)")
+    fig.update_layout(template="plotly_white", legend_title_text="", yaxis_title="-log10(padj)")
     return dcc.Graph(figure=fig)
 
 
@@ -262,6 +262,7 @@ def _build_top_genes_heatmap_from_results(adata, results_df, grouping, celltype_
         title=f"Top 20 DE genes heatmap for {celltype_label}",
     )
     heatmap_fig.update_layout(
+        template="plotly_white",
         height=max(500, 40 * len(available_top_genes) + 180),
         margin=dict(
             l=150,
@@ -370,6 +371,7 @@ def _build_cross_population_heatmap(gene_heatmap_df, title):
         ),
     )
     fig.update_layout(
+        template="plotly_white",
         height=heatmap_height,
         xaxis_tickangle=45,
         margin=dict(l=150, r=30, t=90, b=120),
@@ -523,7 +525,7 @@ def _build_cross_population_heatmap_from_runtime_de(
         },
         title="Heatmap of top genes across cell populations",
     )
-    fig.update_layout(xaxis_tickangle=45)
+    fig.update_layout(template="plotly_white", xaxis_tickangle=45)
     return dcc.Graph(figure=fig)
 
 
@@ -537,6 +539,7 @@ def register_differential_expression_callbacks(app):
         prevent_initial_call=False,
     )
     def populate_de_reference_files(_refresh_token):
+        print("Refreshing DE reference files")
         filenames = _read_downloaded_de_reference_filenames()
         if not filenames:
             return (

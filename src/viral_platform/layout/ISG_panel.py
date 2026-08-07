@@ -73,7 +73,7 @@ def create_isg_panel():
 
 	return html.Div(
 		style={
-			"backgroundColor": "#e9ecef",
+			"backgroundColor": "#eff7ff",
 			"padding": "20px",
 			"borderRadius": "5px",
 			"border": "1px solid #000000",
@@ -200,21 +200,12 @@ def create_isg_panel():
 							],
 							style={"display": "flex", "alignItems": "flex-start"},
 						),
-						dbc.Col(
-							dbc.Button(
-								[html.Span("📚 ", style={"fontSize": "12px"}), "View Available ISG Sets"],
-								color="light",
-								size="sm",
-								style={"whiteSpace": "nowrap", "border": "1px solid #dee2e6"},
-							),
-							width="auto",
-							style={"display": "flex", "alignItems": "center"},
-						),
+						
 					],
 					align="center",
 				),
 				style={
-					"backgroundColor": "#e7f1ff",
+					"backgroundColor": "#deefff",
 					"border": "1px solid #b6d4fe",
 					"borderRadius": "6px",
 					"padding": "12px 16px",
@@ -279,7 +270,6 @@ def create_isg_panel():
 						]),
 					),
 				],
-				hidden=True,
 				style={"marginTop": "20px", "padding": "10px", "border": "1px solid #dee2e6", "borderRadius": "5px"},
 			),
 		],

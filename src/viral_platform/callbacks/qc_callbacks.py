@@ -60,7 +60,7 @@ def register_qc_callbacks(app):
                 points=False,
                 title="nCount_RNA",
             )
-            ncount_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Counts")
+            ncount_fig.update_layout(template="plotly_white", showlegend=False, xaxis_title="", yaxis_title="Counts")
 
             ncount_fig.add_hline(y=min_counts[0], line_dash="dash", line_color="red", annotation_text="Min Counts", annotation_position="top left")
             ncount_fig.add_hline(y=min_counts[1], line_dash="dash", line_color="red", annotation_text="Max Counts", annotation_position="top right")
@@ -97,7 +97,7 @@ def register_qc_callbacks(app):
                 points=False,
                 title="nFeature_RNA",
             )
-            nfeature_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Features")
+            nfeature_fig.update_layout(template="plotly_white", showlegend=False, xaxis_title="", yaxis_title="Features")
 
             nfeature_fig.add_hline(y=min_features[0], line_dash="dash", line_color="red", annotation_text="Min Features", annotation_position="top left")
             nfeature_fig.add_hline(y=min_features[1], line_dash="dash", line_color="red", annotation_text="Max Features", annotation_position="top right")
@@ -131,7 +131,7 @@ def register_qc_callbacks(app):
                 points=False,
                 title="Percent Mitochondrial Genes",
             )
-            percent_mt_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Percent")
+            percent_mt_fig.update_layout(template="plotly_white", showlegend=False, xaxis_title="", yaxis_title="Percent")
 
             percent_mt_fig.add_hline(y=max_percent_mt, line_dash="dash", line_color="red", annotation_text="Max Percent MT", annotation_position="top right")
             return percent_mt_fig

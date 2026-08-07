@@ -24,7 +24,7 @@ def create_elbow_plot(adata=None):
         })
         
         fig = px.bar(df, x="Principal Component", y="Explained Variance Ratio", title="Elbow Plot")
-        fig.update_layout(xaxis_title="Principal Components", yaxis_title="Explained Variance Ratio")
+        fig.update_layout(template="plotly_white", xaxis_title="Principal Components", yaxis_title="Explained Variance Ratio")
         return html.Div([
             dcc.Graph(figure=fig, id="elbow-plot"),
             dcc.Slider(
@@ -36,8 +36,7 @@ def create_elbow_plot(adata=None):
                 marks={i: f"PC{i}" for i in range(1, len(explained_variance_ratio)+1)},
             ),
             html.Button("Apply PCA Selection", id="select-pcs-button", n_clicks=0, style={"marginTop": "20px"}),
-            dcc.Loading(html.Div(id="clustering-loading", style={"display": "none"})),
-            html.Div(id="selected-pcs-output", style={"marginTop": "10px", "fontWeight": "bold"}, children="Select PCs to begin clustering analysis.")
+            
         ])
     except Exception as exc:
         raise RuntimeError("Failed to create elbow plot: " + str(exc)) from exc

@@ -6,7 +6,7 @@ from viral_platform.state.dataset_store import get_cached_result
 def create_differential_expression_panel():
     return html.Div(
         style={
-            "backgroundColor": "#e9ecef",
+            "backgroundColor": "#eff7ff",
             "padding": "20px",
             "borderRadius": "5px",
             "border": "1px solid #000000",

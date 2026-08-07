@@ -34,6 +34,7 @@ def create_umap_plot(adata=None):
             labels={"Cluster": "Leiden Cluster"}
         )
         fig.update_layout(
+            template="plotly_white",
             legend=dict(
                 title="Leiden Clusters",
                 orientation="h",

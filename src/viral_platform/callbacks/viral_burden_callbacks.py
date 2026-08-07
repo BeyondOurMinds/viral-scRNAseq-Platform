@@ -125,7 +125,7 @@ def _build_infection_umap(adata):
         opacity=0.85,
     )
     fig.update_traces(marker={"size": 4})
-    fig.update_layout(legend_title_text="")
+    fig.update_layout(template="plotly_white", legend_title_text="")
     return dcc.Graph(figure=fig)
 
 
@@ -146,6 +146,7 @@ def _build_viral_burden_umap(adata):
         title="Viral Burden UMAP",
         opacity=0.85,
     )
+    fig.update_layout(template="plotly_white")
     fig.update_traces(marker={"size": 4})
     fig.update_coloraxes(colorbar_title="Viral burden")
     return dcc.Graph(figure=fig)
@@ -184,7 +185,7 @@ def _build_violin_plots(
             points=False,
             title=f"Viral burden (%) by cell type ({celltype_col})",
         )
-        fig_celltype.update_layout(xaxis_tickangle=45)
+        fig_celltype.update_layout(template="plotly_white", xaxis_tickangle=45)
         sections.append(dcc.Graph(figure=fig_celltype))
     else:
         sections.append(html.Div("No cell type column found for cell type violin plot."))
@@ -198,7 +199,7 @@ def _build_violin_plots(
             points=False,
             title=f"Viral burden (%) by condition ({condition_col})",
         )
-        fig_condition.update_layout(xaxis_tickangle=45)
+        fig_condition.update_layout(template="plotly_white", xaxis_tickangle=45)
         sections.append(dcc.Graph(figure=fig_condition))
     else:
         sections.append(html.Div("No condition/group column found for condition violin plot."))
@@ -212,7 +213,7 @@ def _build_violin_plots(
             points=False,
             title=f"Viral burden (%) by sample ({sample_col})",
         )
-        fig_sample.update_layout(xaxis_tickangle=45)
+        fig_sample.update_layout(template="plotly_white", xaxis_tickangle=45)
         sections.append(dcc.Graph(figure=fig_sample))
     else:
         sections.append(html.Div("No sample column found for sample violin plot."))
@@ -256,7 +257,7 @@ def _build_celltype_infection_fraction_plot(adata, celltype_col=None):
             "infection_fraction": ":.2%",
         },
     )
-    fig.update_layout(xaxis_tickangle=45, yaxis_tickformat=".0%")
+    fig.update_layout(template="plotly_white",xaxis_tickangle=45, yaxis_tickformat=".0%")
     return dcc.Graph(figure=fig)
 
 def register_viral_burden_callbacks(app):
