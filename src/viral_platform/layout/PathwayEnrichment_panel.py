@@ -119,14 +119,6 @@ def create_pathway_enrichment_panel():
                             children=get_cached_result("pathway-enrichment-bar-plot-container", ["No bar plot yet. Run the analysis to see results here."])
                         ),
                     ),
-                    dbc.Tab(
-                        label="GSEA Enrichment Plot",
-                        tab_id="gsea-plot-tab",
-                        children=html.Div(
-                            id="pathway-enrichment-gsea-plot-container", 
-                            children=get_cached_result("pathway-enrichment-gsea-plot-container", ["No GSEA enrichment plot yet. Run the analysis to see results here."])
-                        ),
-                    ),
                 ],
             ),
             

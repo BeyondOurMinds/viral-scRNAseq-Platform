@@ -108,19 +108,14 @@ def create_differential_expression_panel():
                 ],
                 style={"marginTop": "8px"},
             ),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        dcc.Loading(
-                            html.Div(
-                                id="differential-expression-loading-signal",
-                                style={"display": "none"},
-                            )
-                        ),
-                        width="auto",
-                    )
-                ]
+            
+            dcc.Loading(
+                html.Div(
+                    id="differential-expression-loading-signal",
+                    style={"display": "none"},
+                )
             ),
+            
             dbc.Tabs(
                 id="differential-expression-output-tabs",
                 active_tab="pseudobulk-tab",
