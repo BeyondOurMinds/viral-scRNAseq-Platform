@@ -38,6 +38,52 @@ def create_pathway_enrichment_panel():
                 ),
             ]),
 
+            # parameter selection
+            dbc.Row([
+                dbc.Col(
+                    html.Div(
+                        [
+                            html.P("Select Cell Type"),
+                            dcc.Dropdown(
+                                id="pathway-enrichment-celltype-dropdown",
+                                options=[],
+                                placeholder="Select Cell Type",
+                                searchable=True,
+                            ),
+                        ]
+                    ),
+                ),
+                dbc.Col(
+                    html.Div(
+                        [
+                            html.P("Select Analysis"),
+                            dcc.Dropdown(
+                                id="pathway-enrichment-analysis-dropdown",
+                                options=[({"label": "Over Representation Analysis (ORA)", "value": "ORA"}),
+                                          ({"label": "Gene Set Enrichment Analysis (GSEA)", "value": "GSEA"})],
+                                placeholder="Select Analysis",
+                                searchable=True,
+                            ),
+                        ]
+                    ),
+                ),
+                dbc.Col(
+                    html.Div(
+                        [
+                            html.P("Select Gene Set"),
+                            dcc.Dropdown(
+                                id="pathway-enrichment-gene-set-dropdown",
+                                options=[
+                                    ({"label": "GO", "value": "GO_Biological_Process_2026"}),
+                                ],
+                                placeholder="Select Gene Set",
+                                searchable=True,
+                            ),
+                        ]
+                    ),
+                ),
+            ]),
+
             # loading signal
             dcc.Loading(
                 type="default",
@@ -45,6 +91,45 @@ def create_pathway_enrichment_panel():
             ),
 
             # results container
-            html.Div(id="pathway-enrichment-results-container", children=get_cached_result("pathway-enrichment-results-container", ["No pathway enrichment results yet. Run the analysis to see results here."])),
+            dbc.Tabs(
+                id="pathway-enrichment-tabs",
+                active_tab="table-tab",
+                children=[
+                    dbc.Tab(
+                        label="Results Table",
+                        tab_id="table-tab",
+                        children=html.Div(
+                            id="pathway-enrichment-results-container", 
+                            children=get_cached_result("pathway-enrichment-results-container", ["No pathway enrichment results yet. Run the analysis to see results here."])
+                        ),
+                    ),
+                    dbc.Tab(
+                        label="Dot Plot",
+                        tab_id="dot-plot-tab",
+                        children=html.Div(
+                            id="pathway-enrichment-dot-plot-container", 
+                            children=get_cached_result("pathway-enrichment-dot-plot-container", ["No dot plot yet. Run the analysis to see results here."])
+                        ),
+                    ),
+                    dbc.Tab(
+                        label="Bar Plot",
+                        tab_id="bar-plot-tab",
+                        children=html.Div(
+                            id="pathway-enrichment-bar-plot-container", 
+                            children=get_cached_result("pathway-enrichment-bar-plot-container", ["No bar plot yet. Run the analysis to see results here."])
+                        ),
+                    ),
+                    dbc.Tab(
+                        label="GSEA Enrichment Plot",
+                        tab_id="gsea-plot-tab",
+                        children=html.Div(
+                            id="pathway-enrichment-gsea-plot-container", 
+                            children=get_cached_result("pathway-enrichment-gsea-plot-container", ["No GSEA enrichment plot yet. Run the analysis to see results here."])
+                        ),
+                    ),
+                ],
+            ),
+            
+
         ], id="pathway-enrichment-panel"
     )

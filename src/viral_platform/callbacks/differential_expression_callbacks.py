@@ -1251,5 +1251,14 @@ def register_differential_expression_callbacks(app):
             "volcano-plot-container": volcano_output,
             "de-heatmap-container": heatmap_output,
         })
+
+
+        # For each cell type dataframe, normalize the gene column and replace the updated frame in the dictionary (for pathway enrichment later)
+        for celltype, results_df in de_results_by_celltype.items():
+            normalized_df = _normalize_reference_de_columns(
+                _normalize_de_result_gene_column(results_df.copy(), celltype)
+            )
+            de_results_by_celltype[celltype] = normalized_df
+        
         update_state_store(**{"DE_results": {"results_by_celltype": de_results_by_celltype}})
         return de_results, pseudobulk_output, de_output, volcano_output, heatmap_output

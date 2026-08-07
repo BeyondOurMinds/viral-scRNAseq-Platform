@@ -33,8 +33,7 @@ _DEFAULT_HISTORY = {
         "selected_filename": None,
     },
     "CCC_active_context": "uploaded",
-    # Rendered Dash components are kept separately from AnnData so routed pages
-    # can be rebuilt without discarding plots and tables produced on another page.
+    # Rendered Dash components are kept separately from AnnData so routed pages can be rebuilt without discarding plots and tables produced on another page.
     "results_cache": {},
 }
 
