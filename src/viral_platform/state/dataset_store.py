@@ -24,6 +24,9 @@ _DEFAULT_HISTORY = {
         "isg_genes": [],
         "isg_features": [],
     },
+    "host-virus-interaction": {
+        "sig_host_genes": [],
+    },
     "CCC_results": {
         "results": None,
     },
@@ -65,6 +68,9 @@ def _new_history_state():
         "isg_detection": {
             "isg_genes": [],
             "isg_features": [],
+        },
+        "host-virus-interaction": {
+            "sig_host_genes": [],
         },
         "CCC_results": {
             "results": None,
@@ -231,6 +237,9 @@ def clear_working_dataset():
     history["isg_detection"] = {
         "isg_genes": [],
         "isg_features": [],
+    }
+    history["host-virus-interaction"] = {
+        "sig_host_genes": [],
     }
     history["CCC_results"] = {
         "results": None,
