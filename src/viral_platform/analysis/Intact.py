@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import networkx as nx
 import pandas as pd
 
 
@@ -273,10 +273,83 @@ def run_intact_interpretation(
     return matches, summary
 
 def build_intact_cytoscape_elements(summary_df):
+    """
+    Convert summarized IntAct interactions into Dash Cytoscape
+    elements using a deterministic NetworkX layout.
+
+    Viral protein nodes are represented in red and host gene
+    nodes in blue. Edges represent virus-host interactions.
+    """
 
     if summary_df.empty:
         return []
 
+    # Build NetworkX graph
+    graph = nx.Graph()
+
+    for _, row in summary_df.iterrows():
+
+        virus_protein_id = str(row["virus_protein_id"])
+        host_gene = str(row["host_gene"])
+
+        virus_node = f"virus_{virus_protein_id}"
+        host_node = f"host_{host_gene}"
+
+        graph.add_node(
+            virus_node,
+            node_type="virus",
+        )
+
+        graph.add_node(
+            host_node,
+            node_type="host",
+        )
+
+        graph.add_edge(
+            virus_node,
+            host_node,
+        )
+
+    # Calculate deterministic positions
+    positions = {}
+
+    components = list(
+        nx.connected_components(graph)
+    )
+
+    components.sort(
+        key=len,
+        reverse=True,
+    )
+
+    component_spacing = 1.2
+    n_columns = 2
+
+    for component_index, component in enumerate(components):
+
+        subgraph = graph.subgraph(component)
+
+        component_positions = nx.spring_layout(
+            subgraph,
+            seed=42,
+            k=0.7,
+            iterations=100,
+        )
+
+        row = component_index // n_columns
+        column = component_index % n_columns
+
+        x_offset = column * component_spacing
+        y_offset = -row * component_spacing
+
+        for node, pos in component_positions.items():
+
+            positions[node] = (
+                pos[0] + x_offset,
+                pos[1] + y_offset,
+            )
+
+    # Build Cytoscape elements
     elements = []
 
     virus_nodes = {}
@@ -284,47 +357,86 @@ def build_intact_cytoscape_elements(summary_df):
 
     for _, row in summary_df.iterrows():
 
-        virus_id = str(row["virus_protein_id"])
-        virus_name = str(row["virus_protein"])
+        virus_protein_id = str(
+            row["virus_protein_id"]
+        )
 
-        if virus_id not in virus_nodes:
-            virus_nodes[virus_id] = {
+        virus_protein = str(
+            row["virus_protein"]
+        )
+
+        virus_node = f"virus_{virus_protein_id}"
+
+        # Viral protein node
+        if virus_node not in virus_nodes:
+
+            pos = positions[virus_node]
+
+            virus_nodes[virus_node] = {
                 "data": {
-                    "id": f"virus_{virus_id}",
-                    "label": virus_name,
+                    "id": virus_node,
+                    "label": virus_protein,
                     "node_type": "virus",
-                    "virus_id": virus_id,
-                    "virus_name": row["virus_name"],
-                }
+                    "protein_id": virus_protein_id,
+                    "protein_name": virus_protein,
+                    "virus_taxid": row["virus_id"],
+                    "virus_organism": row["virus_organism"],
+                },
+                "position": {
+                    "x": float(pos[0] * 400),
+                    "y": float(pos[1] * 400),
+                },
             }
 
+        # Host gene node
         host_gene = str(row["host_gene"])
-        host_node_id = f"host_{host_gene}"
+        host_node = f"host_{host_gene}"
 
-        if host_node_id not in host_nodes:
+        if host_node not in host_nodes:
+
+            pos = positions[host_node]
+
             elements.append({
                 "data": {
-                    "id": host_node_id,
+                    "id": host_node,
                     "label": host_gene,
                     "node_type": "host",
                     "host_gene": host_gene,
-                }
+                },
+                "position": {
+                    "x": float(pos[0] * 400),
+                    "y": float(pos[1] * 400),
+                },
             })
 
-            host_nodes.add(host_node_id)
+            host_nodes.add(host_node)
 
+    # Add viral protein nodes
     elements.extend(virus_nodes.values())
 
+    # Add edges
     for _, row in summary_df.iterrows():
 
-        virus_id = str(row["virus_protein_id"])
-        host_gene = str(row["host_gene"])
+        virus_protein_id = str(
+            row["virus_protein_id"]
+        )
+
+        host_gene = str(
+            row["host_gene"]
+        )
+
+        virus_node = f"virus_{virus_protein_id}"
+        host_node = f"host_{host_gene}"
+
+        edge_id = (
+            f"edge_{virus_protein_id}_{host_gene}"
+        )
 
         elements.append({
             "data": {
-                "id": f"edge_{virus_id}_{host_gene}",
-                "source": f"virus_{virus_id}",
-                "target": f"host_{host_gene}",
+                "id": edge_id,
+                "source": virus_node,
+                "target": host_node,
                 "interaction_count": int(
                     row["interaction_count"]
                 ),
@@ -332,6 +444,15 @@ def build_intact_cytoscape_elements(summary_df):
                     row["publication_count"]
                 ),
                 "publications": row["publications"],
+                "virus_taxid": row["virus_id"],
+                "virus_organism": row["virus_organism"],
+                "virus_protein_id": virus_protein_id,
+                "virus_protein": row["virus_protein"],
+                "host_gene": host_gene,
+                "de_cell_types": row.get(
+                    "de_cell_types",
+                    "",
+                ),
             }
         })
 

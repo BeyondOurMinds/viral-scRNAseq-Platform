@@ -4,7 +4,7 @@ import dash_bootstrap_components as dbc
 from viral_platform.analysis.viral_gene_detection import list_viral_gene_sets
 from viral_platform.state.dataset_store import cache_results, get_working_dataset, get_state_store, update_state_store
 from viral_platform.analysis.host_virus_interaction import host_virus_interaction, get_features_for_gene
-from viral_platform.analysis.Intact import load_intact_reference, find_intact_interactions, summarize_intact_interactions, get_significant_de_genes, get_de_genes_for_celltype, run_intact_interpretation
+from viral_platform.analysis.Intact import load_intact_reference, build_intact_cytoscape_elements, get_significant_de_genes, get_de_genes_for_celltype, run_intact_interpretation
 import logging
 
 
@@ -229,6 +229,7 @@ def register_host_virus_interaction_callbacks(app):
     @app.callback(
         Output("host-virus-interaction-interpretation-loading-signal", "children"),
         Output("host-virus-interaction-interpretation-results-container", "children"),
+        Output("host-virus-interaction-network","elements"),
         Input("run-host-virus-interaction-interpretation-button", "n_clicks"),
         State("host-virus-interaction-interpretation-dropdown", "value"),
         State("host-virus-interaction-gene-source-dropdown", "value"),
@@ -241,7 +242,7 @@ def register_host_virus_interaction_callbacks(app):
         """
 
         if not n_clicks or n_clicks == 0:
-            return no_update, no_update
+            return no_update, no_update, no_update
         
         intact_df = load_intact_reference(
             r"src\viral_platform\intact\intact_virus_host.tsv"
@@ -253,7 +254,7 @@ def register_host_virus_interaction_callbacks(app):
         )
 
         if not virus_taxids:
-            return "done", f"No IntAct reference data found for virus: {selected_virus}."
+            return "done", f"No IntAct reference data found for virus: {selected_virus}.", []
 
         intact_virus = intact_df[
             intact_df["virus_taxid"].isin(virus_taxids)
@@ -278,7 +279,7 @@ def register_host_virus_interaction_callbacks(app):
             else:
                 de_results = de_results_by_celltype[selected_celltype]
                 if de_results is None:
-                    return "done", f"No DE results found for cell type: {selected_celltype}."
+                    return "done", f"No DE results found for cell type: {selected_celltype}.", []
                 genes = get_de_genes_for_celltype(de_results_by_celltype, selected_celltype)
                 gene_to_celltypes = {
                     gene: [selected_celltype]
@@ -293,7 +294,7 @@ def register_host_virus_interaction_callbacks(app):
 
             # results table
             if raw_matches.empty:
-                return "done", f"No significant host-virus interactions found for virus: {selected_virus} and cell type: {selected_celltype}."
+                return "done", f"No significant host-virus interactions found for virus: {selected_virus} and cell type: {selected_celltype}.", []
             
         elif gene_source == "isg":
             # Load ISG genes from the state
@@ -317,7 +318,7 @@ def register_host_virus_interaction_callbacks(app):
             )
         elif gene_source == "custom":
             if not custom_gene_list:
-                return "done", "No custom gene list provided."
+                return "done", "No custom gene list provided.", []
             genes = [gene.strip() for gene in custom_gene_list.split(",") if gene.strip()]
             raw_matches, summary = run_intact_interpretation(
                 intact_virus,
@@ -325,8 +326,11 @@ def register_host_virus_interaction_callbacks(app):
             )
 
         table = make_sortable_table(summary, "host-virus-interaction-interpretation-results-table")
+        elements = build_intact_cytoscape_elements(summary)
         cache_results(**{
-        "host-virus-interaction-interpretation-results-container": table})
+        "host-virus-interaction-interpretation-results-container": table,
+        "host-virus-interaction-network": elements,
+        })
 
-        return "done", table
+        return "done", table, elements
         

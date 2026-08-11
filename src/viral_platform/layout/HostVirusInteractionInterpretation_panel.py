@@ -1,6 +1,8 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 from viral_platform.state.dataset_store import get_cached_result
+import dash_cytoscape as cyto
+
 
 def create_host_virus_interaction_interpretation_panel():
     return html.Div(
@@ -120,16 +122,63 @@ def create_host_virus_interaction_interpretation_panel():
                                 ),
                     ),
                     dbc.Tab(
-                        label="VirHostNet",
-                        tab_id="virhostnet-tab",
+                        label="Cytoscape Network",
+                        tab_id="cytoscape-network-tab",
                         children=html.Div(
-                            id="virhostnet-container",
-                            children=get_cached_result("virhostnet-container", [
-                                html.P(
-                                    "No VirHostNet results yet. Run the analysis to see results here.",
-                                    style={"color": "#6c757d", "fontSize": "14px"},
+                            id="cytoscape-network-container",
+                            children=[
+                                cyto.Cytoscape(
+                                    id="host-virus-interaction-network",
+                                    elements=get_cached_result("host-virus-interaction-network", []),
+                                    layout={
+                                        "name": "preset",
+                                        "fit": True,
+                                        "padding": 30,
+                                    },
+                                    minZoom=0.5,
+                                    maxZoom=2,
+                                    style={
+                                        "width": "100%",
+                                        "height": "700px",
+                                    },
+                                    stylesheet=[
+                                        {
+                                            "selector": 'node[node_type="virus"]',
+                                            "style": {
+                                                "background-color": "#d62728",
+                                                "label": "data(label)",
+                                                "color": "#000000",
+                                                "text-valign": "center",
+                                                "text-halign": "center",
+                                                "width": 40,
+                                                "height": 40,
+                                            },
+                                        },
+                                        {
+                                            "selector": 'node[node_type="host"]',
+                                            "style": {
+                                                "background-color": "#1f77b4",
+                                                "label": "data(label)",
+                                                "color": "#000000",
+                                                "text-valign": "center",
+                                                "text-halign": "center",
+                                                "width": 35,
+                                                "height": 35,
+                                            },
+                                        },
+                                        {
+                                            "selector": "edge",
+                                            "style": {
+                                                "curve-style": "bezier",
+                                                "target-arrow-shape": "triangle",
+                                                "arrow-scale": 1,
+                                                "line-color": "#888888",
+                                                "target-arrow-color": "#888888",
+                                            },
+                                        },
+                                    ],
                                 )
-                            ]),
+                            ],
                         ),
                     ),
                 ],
