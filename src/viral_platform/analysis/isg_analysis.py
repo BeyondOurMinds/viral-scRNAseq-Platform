@@ -4,7 +4,7 @@ from pathlib import Path
 from viral_platform.state.dataset_store import get_dataset, get_working_dataset
 
 
-ISG_SETS_PATH = Path("src/viral_platform/ISG_sets")
+ISG_SETS_PATH = Path(__file__).parent / "isg_sets"
 
 
 def normalize_gene_name(gene):
