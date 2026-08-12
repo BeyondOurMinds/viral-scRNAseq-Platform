@@ -1,3 +1,5 @@
+import copy
+
 _DEFAULT_HISTORY = {
     "raw": None,
     "working": None,
@@ -88,9 +90,24 @@ def _new_history_state():
 history = _new_history_state()
 
 
+_DATASET_KEYS = {"raw", "working", "adata_pca"}
+
+
 def get_state_store():
     """Expose the shared in-memory state dictionary for cross-module access."""
     return history
+
+
+def get_state_snapshot(include_results_cache=True):
+    """Return a deep-copied snapshot of session state for persistence."""
+    snapshot = {
+        key: copy.deepcopy(value)
+        for key, value in history.items()
+        if key not in _DATASET_KEYS
+    }
+    if not include_results_cache:
+        snapshot.pop("results_cache", None)
+    return snapshot
 
 
 def reset_state_store():
@@ -125,6 +142,30 @@ def get_cached_result(result_id, default=None):
 def clear_results_cache():
     """Remove generated UI results, normally when a new dataset is loaded."""
     history["results_cache"] = {}
+
+
+def set_results_cache(results_cache):
+    """Replace the cached rendered UI component dictionary."""
+    history["results_cache"] = results_cache if isinstance(results_cache, dict) else {}
+
+
+def restore_state_snapshot(snapshot, include_results_cache=True):
+    """Restore persisted state values while preserving in-memory dataset objects."""
+    if not isinstance(snapshot, dict):
+        return
+
+    preserved = {key: history.get(key) for key in _DATASET_KEYS}
+    reset_state_store()
+    history.update(preserved)
+
+    for key, value in snapshot.items():
+        if key not in _DEFAULT_HISTORY:
+            continue
+        if key in _DATASET_KEYS:
+            continue
+        if key == "results_cache" and not include_results_cache:
+            continue
+        history[key] = copy.deepcopy(value)
 
 
 def _as_float(value):

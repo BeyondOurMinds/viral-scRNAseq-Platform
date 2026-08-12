@@ -11,6 +11,7 @@ from .ccc_callbacks import register_ccc_callbacks
 from .scmovir_reference_callbacks import register_scmovir_reference_callbacks
 from .cell_annotation_callbacks import register_cell_annotation_callbacks
 from .pathway_enrichment_callbacks import register_pathway_enrichment_callbacks
+from .save_callbacks import register_save_callbacks
 
 __all__ = [
 	"register_sidebar_callbacks",
@@ -20,6 +21,7 @@ __all__ = [
     "register_cell_annotation_callbacks",
 	"register_differential_expression_callbacks",
     "register_pathway_enrichment_callbacks",
+	"register_save_callbacks",
 	"register_vd_callbacks",
 	"register_viral_burden_callbacks",
 	"register_isg_callbacks",
