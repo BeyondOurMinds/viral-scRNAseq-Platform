@@ -2,7 +2,7 @@ from dash import Output, Input, State, dash_table, no_update, dcc
 import plotly.express as px
 import numpy as np
 import textwrap
-from viral_platform.state.dataset_store import cache_results, get_working_dataset, set_working_dataset, get_state_store
+from viral_platform.state.dataset_store import cache_results, get_state_store
 from viral_platform.analysis.PathwayEnrichment import run_pathway_enrichment
 import logging
 

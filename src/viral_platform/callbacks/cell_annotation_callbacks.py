@@ -1,6 +1,6 @@
 import logging
 
-from dash import Output, Input, State, no_update, dcc
+from dash import Output, Input, no_update, dcc
 from viral_platform.analysis.CellAnnotation import annotate_cells, celltypist_umap
 from viral_platform.state.dataset_store import cache_results, get_working_dataset, set_working_dataset
 

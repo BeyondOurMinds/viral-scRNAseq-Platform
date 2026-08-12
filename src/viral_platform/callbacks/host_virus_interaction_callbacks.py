@@ -1,5 +1,4 @@
 from dash import Input, Output, State, dash_table, html, no_update
-import pandas as pd
 import dash_bootstrap_components as dbc
 from viral_platform.analysis.viral_gene_detection import list_viral_gene_sets
 from viral_platform.state.dataset_store import cache_results, get_working_dataset, get_state_store, update_state_store
