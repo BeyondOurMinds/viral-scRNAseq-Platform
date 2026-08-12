@@ -4,7 +4,11 @@ from pathlib import Path
 from viral_platform.state.dataset_store import get_dataset, get_working_dataset
 
 
-ISG_SETS_PATH = Path(__file__).parent / "isg_sets"
+ISG_SETS_PATH = Path(__file__).parent.parent / "ISG_sets"
+
+print("Detection module __file__:", __file__)
+print("ISG sets path:", ISG_SETS_PATH)
+print("ISG sets exists:", ISG_SETS_PATH.exists())
 
 
 def normalize_gene_name(gene):

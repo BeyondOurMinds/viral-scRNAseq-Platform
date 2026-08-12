@@ -4,7 +4,6 @@ import pickle
 import re
 import zipfile
 from datetime import datetime, timezone
-from pathlib import Path
 
 import anndata as ad
 import numpy as np
@@ -12,6 +11,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import scanpy as sc
 
+from viral_platform.scmovir.app_paths import get_app_data_dir
 from viral_platform.state.dataset_store import (
     get_state_snapshot,
     get_state_store,
@@ -27,8 +27,7 @@ from viral_platform.utils.logging_config import get_captured_logs_text
 SAVE_FILENAME = "session.h5ad"
 RESULTS_CACHE_FILENAME = "results_cache.pkl"
 STATE_UNS_KEY = "viral_platform_state_history"
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-SAVES_ROOT = PROJECT_ROOT / "saves"
+SAVES_ROOT = get_app_data_dir() / "saves"
 
 _INVALID_PATH_CHARS = re.compile(r'[<>:"/\\|?*]+')
 

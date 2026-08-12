@@ -171,8 +171,13 @@ def run_deseq2(counts, metadata):
         counts=counts,
         metadata=metadata,
         design="~condition",
+        n_cpus=1,
     )
+
+    print("Starting dds.deseq2()...")
     dds.deseq2()
+    print("Finished dds.deseq2().")
+
     return dds
 
 def extract_results(dds, group1, group2):
@@ -182,9 +187,13 @@ def extract_results(dds, group1, group2):
             "condition",
             group1,
             group2
-        ]
+        ],
+        n_cpus=1,
     )
+
+    print("Running stat_res.summary()...")
     stat_res.summary()
+    print("Finished stat_res.summary().")
     results = stat_res.results_df
     results = results.sort_values("padj")
     print("DE results shape:", results.shape)

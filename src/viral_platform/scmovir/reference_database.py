@@ -1,5 +1,6 @@
 from pathlib import Path
 import sqlite3
+from .app_paths import get_datasets_dir
 
 
 class ReferenceDatabase:
@@ -204,7 +205,7 @@ class ReferenceDatabase:
         """
         file_record = self.get_file(project_id, file_type)
         if file_record and file_record["is_downloaded"]:
-            local_path = Path(file_record["local_path"])
+            local_path = get_datasets_dir() / file_record["filename"]
             if local_path.exists():
                 local_path.unlink()  # Delete the file
             self.update_file_download_status(project_id, file_type, is_downloaded=False)

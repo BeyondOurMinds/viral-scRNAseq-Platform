@@ -5,6 +5,7 @@ from viral_platform.analysis.viral_gene_detection import list_viral_gene_sets
 from viral_platform.state.dataset_store import cache_results, get_working_dataset, get_state_store, update_state_store
 from viral_platform.analysis.host_virus_interaction import host_virus_interaction, get_features_for_gene
 from viral_platform.analysis.Intact import load_intact_reference, build_intact_cytoscape_elements, get_significant_de_genes, get_de_genes_for_celltype, run_intact_interpretation
+from pathlib import Path
 import logging
 
 
@@ -287,8 +288,10 @@ def register_host_virus_interaction_callbacks(app):
         if not n_clicks or n_clicks == 0:
             return no_update, no_update, no_update
         
+        reference_path = Path(__file__).parent.parent / "intact" / "intact_virus_host.tsv"
+        
         intact_df = load_intact_reference(
-            r"src\viral_platform\intact\intact_virus_host.tsv"
+            reference_path
         )
 
         virus_taxids = INTACT_VIRUS_TAXIDS.get(

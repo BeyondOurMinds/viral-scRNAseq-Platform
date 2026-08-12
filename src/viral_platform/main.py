@@ -1,10 +1,12 @@
 import logging
-
-from viral_platform.gui import ViralApp
+from multiprocessing import freeze_support
 
 logger = logging.getLogger(__name__)
 
+
 def main():
+    from viral_platform.gui import ViralApp
+
     try:
         app = ViralApp()
         app.run()
@@ -16,4 +18,5 @@ def main():
 
 
 if __name__ == "__main__":
+    freeze_support()
     main()

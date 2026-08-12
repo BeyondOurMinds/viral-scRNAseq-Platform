@@ -28,8 +28,8 @@ class ViralApp:
 
     def run(self):
         try:
-            logger.info("Starting Dash server in debug mode.")
-            self.app.run(debug=True)
+            #logger.info("Starting Dash server in debug mode.")
+            self.app.run(debug=False, use_reloader=False, dev_tools_hot_reload=False)
         except Exception:
             logger.exception("Dash server failed to start or crashed during runtime.")
             raise

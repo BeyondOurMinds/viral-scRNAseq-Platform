@@ -7,13 +7,14 @@ import dash_bootstrap_components as dbc
 
 from viral_platform.scmovir.reference_database import ReferenceDatabase
 from viral_platform.scmovir.reference_manager import ReferenceManager
+from viral_platform.scmovir.app_paths import get_scmovir_database_path
 
 
 _FIELDS = ("virus_species", "disease", "tissue", "platform")
 
 
 def _database_path() -> Path:
-    return Path(__file__).resolve().parent.parent / "scmovir" / "scmovir.db"
+    return get_scmovir_database_path()
 
 
 def _normalize_value(value):

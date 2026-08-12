@@ -6,11 +6,12 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from viral_platform.scmovir.app_paths import get_app_data_dir
 
 from viral_platform.utils.logging_config import configure_logging
 
 
-UPLOAD_FOLDER = "./.upload_cache"
+UPLOAD_FOLDER = get_app_data_dir() / ".upload_cache"
 logger = logging.getLogger(__name__)
 
 

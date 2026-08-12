@@ -2,6 +2,7 @@ from pathlib import Path
 import requests
 
 from .reference_database import ReferenceDatabase
+from .app_paths import get_datasets_dir
 
 
 class ScMOVIRDownloader:
@@ -27,7 +28,9 @@ class ScMOVIRDownloader:
             return False
 
         download_url = file_info["download_url"]
-        local_path = Path(file_info["local_path"])
+
+        datasets_dir = get_datasets_dir()
+        local_path = datasets_dir / file_info["filename"]
 
         # Already downloaded?
         if file_info["is_downloaded"] and local_path.exists():
