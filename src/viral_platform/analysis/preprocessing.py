@@ -10,7 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def preprocess_data():
+def preprocess_data(n_top_genes=2000, scale_max_value=10):
     adata = get_working_dataset()
     if adata is None:
         raise ValueError("No active dataset found for preprocessing.")
@@ -22,10 +22,10 @@ def preprocess_data():
         # Preserve log-normalized expression for downstream analyses (e.g. CCC).
         adata.layers["log_normalized"] = adata.X.copy()
 
-        sc.pp.highly_variable_genes(adata, n_top_genes=2000, subset=False)
+        sc.pp.highly_variable_genes(adata, n_top_genes=int(n_top_genes), subset=False)
 
         adata_pca = adata[:, adata.var.highly_variable].copy()
-        sc.pp.scale(adata_pca, max_value=10)
+        sc.pp.scale(adata_pca, max_value=float(scale_max_value))
         set_pca_dataset(adata_pca)
 
         # Keep scaled values accessible while PCA/clustering continue to use adata.X.
@@ -61,7 +61,7 @@ def run_pca():
         logger.exception("PCA failed: %s", str(exc))
         raise RuntimeError("PCA failed: " + str(exc)) from exc
     
-def run_clustering(n_dims=10):
+def run_clustering(n_dims=10, n_neighbors=10):
     adata = get_working_dataset()
     adata_pca = get_pca_dataset()
     if adata is None:
@@ -70,7 +70,7 @@ def run_clustering(n_dims=10):
         raise ValueError("No PCA-ready dataset found. Run preprocessing/PCA first.")
     
     try:
-        sc.pp.neighbors(adata_pca, n_neighbors=10, n_pcs=n_dims)
+        sc.pp.neighbors(adata_pca, n_neighbors=int(n_neighbors), n_pcs=int(n_dims))
         sc.tl.leiden(adata_pca)
         sc.tl.umap(adata_pca)
 

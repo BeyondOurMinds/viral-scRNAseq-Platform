@@ -68,6 +68,29 @@ def make_sortable_table(df, table_id):
 
 def register_host_virus_interaction_callbacks(app):
     @app.callback(
+        Output("host-virus-advanced-options-collapse", "is_open"),
+        Input("host-virus-advanced-options-button", "n_clicks"),
+        State("host-virus-advanced-options-collapse", "is_open"),
+        prevent_initial_call=True,
+    )
+    def toggle_host_virus_advanced_options(n_clicks, is_open):
+        if not n_clicks:
+            return is_open
+        return not is_open
+
+    @app.callback(
+        Output("host-virus-min-cells-input", "value"),
+        Output("host-virus-adj-p-cutoff-input", "value"),
+        Output("host-virus-corr-cutoff-input", "value"),
+        Input("host-virus-advanced-reset-button", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def reset_host_virus_advanced_defaults(n_clicks):
+        if not n_clicks:
+            return no_update, no_update, no_update
+        return 10, 0.05, 0.15
+
+    @app.callback(
         Output("host-virus-interaction-dropdown", "options"),
         Output("host-virus-interaction-dropdown", "value"),
         Input("active-dataset-version", "data"),
@@ -94,9 +117,18 @@ def register_host_virus_interaction_callbacks(app):
         Output("host-virus-interaction-summary-container", "children"),
         Input("run-host-virus-interaction-analysis-button", "n_clicks"),
         State("host-virus-interaction-dropdown", "value"),
+        State("host-virus-min-cells-input", "value"),
+        State("host-virus-adj-p-cutoff-input", "value"),
+        State("host-virus-corr-cutoff-input", "value"),
         prevent_initial_call=True,
     )
-    def run_host_virus_interaction_analysis(n_clicks, selected_gene):
+    def run_host_virus_interaction_analysis(
+        n_clicks,
+        selected_gene,
+        min_cells,
+        adj_p_cutoff,
+        corr_cutoff,
+    ):
         """
         Calculates host-virus interactions based on viral burden and host gene expression.
 
@@ -137,7 +169,16 @@ def register_host_virus_interaction_callbacks(app):
         viral_gene_features = get_features_for_gene(adata, selected_gene)
         
         # Run host-virus interaction analysis
-        results = host_virus_interaction(adata, features, selected_gene, viral_gene_features)
+        resolved_min_cells = int(min_cells) if min_cells is not None else 10
+        resolved_adj_p_cutoff = float(adj_p_cutoff) if adj_p_cutoff is not None else 0.05
+        resolved_corr_cutoff = float(corr_cutoff) if corr_cutoff is not None else 0.15
+        results = host_virus_interaction(
+            adata,
+            features,
+            selected_gene,
+            viral_gene_features,
+            min_cells=resolved_min_cells,
+        )
 
         # results table
         if results.empty:
@@ -151,14 +192,16 @@ def register_host_virus_interaction_callbacks(app):
                     html.Tr([html.Td("Selected Viral Gene:"), html.Td(f"{selected_gene}")]),
                     html.Tr([html.Td("Viral Features Used:"), html.Td(len(viral_gene_features))]),
                     html.Tr([html.Td("Total Host Genes Tested:"), html.Td(f"{results.shape[0]}")]),
-                    html.Tr([html.Td("Significant Host Genes (p.adj < 0.05):"), html.Td(f"{(results['adjusted_p'] < 0.05).sum()}")]),
-                    html.Tr([html.Td("Significant Positive Correlations (corr > 0.15):"), html.Td(f"{((results['correlation'] >= 0.15) & (results['adjusted_p'] < 0.05)).sum()}")]),
-                    html.Tr([html.Td("Significant Negative Correlations (corr < -0.15):"), html.Td(f"{((results['correlation'] <= -0.15) & (results['adjusted_p'] < 0.05)).sum()}")]),
+                    html.Tr([html.Td(f"Significant Host Genes (p.adj < {resolved_adj_p_cutoff:.3f}):"), html.Td(f"{(results['adjusted_p'] < resolved_adj_p_cutoff).sum()}")]),
+                    html.Tr([html.Td(f"Significant Positive Correlations (corr > {resolved_corr_cutoff:.2f}):"), html.Td(f"{((results['correlation'] >= resolved_corr_cutoff) & (results['adjusted_p'] < resolved_adj_p_cutoff)).sum()}")]),
+                    html.Tr([html.Td(f"Significant Negative Correlations (corr < -{resolved_corr_cutoff:.2f}):"), html.Td(f"{((results['correlation'] <= -resolved_corr_cutoff) & (results['adjusted_p'] < resolved_adj_p_cutoff)).sum()}")]),
                 ])
             ]
         )
 
-        sig_host_genes = results[results["adjusted_p"] < 0.05]
+        sig_host_genes = results[
+            (results["adjusted_p"] < resolved_adj_p_cutoff)
+        ]
         update_state_store(**{"host-virus-interaction": {"sig_host_genes": sig_host_genes["gene"].tolist()}})
         
         

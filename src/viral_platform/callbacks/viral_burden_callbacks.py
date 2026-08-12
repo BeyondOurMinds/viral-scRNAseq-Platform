@@ -275,6 +275,19 @@ def register_viral_burden_callbacks(app):
         return not is_open
 
     @app.callback(
+        Output("viral-burden-infected-threshold-input", "value"),
+        Output("viral-burden-association-min-cells-input", "value"),
+        Output("viral-burden-association-corr-threshold-input", "value"),
+        Output("viral-burden-association-fdr-threshold-input", "value"),
+        Input("viral-burden-advanced-reset-button", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def reset_viral_burden_advanced_defaults(n_clicks):
+        if not n_clicks:
+            return no_update, no_update, no_update, no_update
+        return 0, 10, 0.3, 0.05
+
+    @app.callback(
         Output("viral-burden-celltype-column-dropdown", "options"),
         Output("viral-burden-celltype-column-dropdown", "value"),
         Output("viral-burden-condition-column-dropdown", "options"),
@@ -358,6 +371,7 @@ def register_viral_burden_callbacks(app):
         State("viral-burden-celltype-column-dropdown", "value"),
         State("viral-burden-condition-column-dropdown", "value"),
         State("viral-burden-sample-column-dropdown", "value"),
+        State("viral-burden-infected-threshold-input", "value"),
         prevent_initial_call=True,
     )
     def run_viral_burden_analysis(
@@ -365,6 +379,7 @@ def register_viral_burden_callbacks(app):
         selected_celltype_column,
         selected_condition_column,
         selected_sample_column,
+        infected_threshold,
     ):
         """
         Calculate viral burden for each cell and render tabbed outputs.
@@ -444,8 +459,13 @@ def register_viral_burden_callbacks(app):
         adata.obs["viral_burden_percent"] = adata.obs["viral_burden"] * 100
 
         #infection status
+        resolved_infected_threshold = (
+            float(infected_threshold) if infected_threshold is not None else 0.0
+        )
         adata.obs["infection_status"] = np.where(
-            adata.obs["viral_counts"] > 0, "Infected", "Bystander" # eventually change this to accept a threshold from the user or default to 0
+            adata.obs["viral_counts"] > resolved_infected_threshold,
+            "Infected",
+            "Bystander",
         )
 
         # log1p transformation of viral counts
@@ -515,9 +535,12 @@ def register_viral_burden_callbacks(app):
         Output("viral-burden-associations-results-container", "children"),
         Output("viral-burden-associations-significant-results-container", "children"),
         Input("run-viral-burden-association-button", "n_clicks"),
+        State("viral-burden-association-min-cells-input", "value"),
+        State("viral-burden-association-corr-threshold-input", "value"),
+        State("viral-burden-association-fdr-threshold-input", "value"),
         prevent_initial_call=True,
     )
-    def run_viral_burden_associations(n_clicks):
+    def run_viral_burden_associations(n_clicks, min_cells, corr_threshold, fdr_threshold):
         """Run viral burden association analysis and render full/significant result tables."""
         if n_clicks is None or n_clicks == 0:
             return no_update, no_update, no_update
@@ -539,9 +562,20 @@ def register_viral_burden_callbacks(app):
             return no_update, "No valid viral features detected. Please run viral gene detection first.", ""
         
         try:
-            associations_df = calculate_viral_burden_associations(features)
+            resolved_min_cells = int(min_cells) if min_cells is not None else 10
+            resolved_corr_threshold = float(corr_threshold) if corr_threshold is not None else 0.3
+            resolved_fdr_threshold = float(fdr_threshold) if fdr_threshold is not None else 0.05
+
+            associations_df = calculate_viral_burden_associations(
+                features,
+                min_cells=resolved_min_cells,
+            )
             logger.info("Viral burden association analysis completed successfully.")
-            significant_associations_df = identify_significant_associations(associations_df)
+            significant_associations_df = identify_significant_associations(
+                associations_df,
+                corr_threshold=resolved_corr_threshold,
+                fdr_threshold=resolved_fdr_threshold,
+            )
             logger.info("Significant viral burden associations identified successfully.")
             full_table = make_sortable_table(associations_df, "viral-burden-associations-table")
             significant_table = make_sortable_table(significant_associations_df, "viral-burden-significant-associations-table")

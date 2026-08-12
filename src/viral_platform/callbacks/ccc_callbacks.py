@@ -799,6 +799,30 @@ def create_network_plot(summary, show_labels=True):
 
 def register_ccc_callbacks(app):
     @app.callback(
+        Output("ccc-advanced-options-collapse", "is_open"),
+        Input("ccc-advanced-options-button", "n_clicks"),
+        State("ccc-advanced-options-collapse", "is_open"),
+        prevent_initial_call=True,
+    )
+    def toggle_ccc_advanced_options(n_clicks, is_open):
+        if not n_clicks:
+            return is_open
+        return not is_open
+
+    @app.callback(
+        Output("ccc-max-magnitude-rank-input", "value"),
+        Output("ccc-max-specificity-rank-input", "value"),
+        Output("ccc-default-render-rows-input", "value"),
+        Output("ccc-interaction-filter-input", "value"),
+        Input("ccc-advanced-reset-button", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def reset_ccc_advanced_defaults(n_clicks):
+        if not n_clicks:
+            return no_update, no_update, no_update, no_update
+        return None, None, DEFAULT_CCC_RENDER_ROWS, DEFAULT_CCC_RENDER_ROWS
+
+    @app.callback(
         Output("ccc-reference-file-radio", "options"),
         Output("ccc-reference-file-radio", "value"),
         Input("scmovir-refresh-token", "data"),
@@ -979,10 +1003,20 @@ def register_ccc_callbacks(app):
         State("ccc-grouping-dropdown", "value"),
         State("ccc-method-dropdown", "value"),
         State("ccc-resource-dropdown", "value"),
+        State("ccc-max-magnitude-rank-input", "value"),
+        State("ccc-max-specificity-rank-input", "value"),
+        State("ccc-default-render-rows-input", "value"),
         prevent_initial_call=True,
     )
     def run_ccc_analysis(
-        n_clicks, dataset_version, grouping_variable, method, resource
+        n_clicks,
+        dataset_version,
+        grouping_variable,
+        method,
+        resource,
+        max_magnitude_rank,
+        max_specificity_rank,
+        default_render_rows,
     ):
         """
         Runs the Cell-Cell Communication (CCC) analysis using the selected parameters.
@@ -1050,16 +1084,20 @@ def register_ccc_callbacks(app):
 
         update_state_store(CCC_active_context="uploaded")
 
-        # Filter and format the results for display
+        filtered_results = filter_liana_results(
+            prepared_results,
+            max_magnitude_rank=max_magnitude_rank,
+            max_specificity_rank=max_specificity_rank,
+        )
 
-        display_results = _display_rows(prepared_results)
+        display_results = _display_rows(filtered_results, default_render_rows)
 
         results_table = liana_output_table(display_results)
         results_table = make_sortable_table(results_table, "ccc-results-table")
         # The summary represents every LIANA result.  Only the interaction-level
         # table is capped, because rendering thousands of individual marks is
         # what slows the browser down.
-        summary = summarise_celltype_interactions(prepared_results)
+        summary = summarise_celltype_interactions(filtered_results)
 
         # Network plot generation
         network_fig = create_network_plot(summary)
@@ -1110,10 +1148,20 @@ def register_ccc_callbacks(app):
         State("ccc-target-filter-dropdown", "value"),
         State("ccc-interaction-filter-input", "value"),
         State("ccc-show-network-labels", "value"),
+        State("ccc-max-magnitude-rank-input", "value"),
+        State("ccc-max-specificity-rank-input", "value"),
+        State("ccc-default-render-rows-input", "value"),
         prevent_initial_call=True,
     )
     def apply_liana_filters(
-        n_clicks, source_filter, target_filter, interaction_filter, show_labels_value
+        n_clicks,
+        source_filter,
+        target_filter,
+        interaction_filter,
+        show_labels_value,
+        max_magnitude_rank,
+        max_specificity_rank,
+        default_render_rows,
     ):
         """
         Filters the LIANA results based on user-selected criteria.
@@ -1194,9 +1242,14 @@ def register_ccc_callbacks(app):
             liana_results,
             source=source_filter if source_filter != "_all_" else None,
             target=target_filter if target_filter != "_all_" else None,
+            max_magnitude_rank=max_magnitude_rank,
+            max_specificity_rank=max_specificity_rank,
         )
 
-        render_limit = _resolve_render_limit(interaction_filter)
+        requested_limit = interaction_filter
+        if requested_limit is None:
+            requested_limit = default_render_rows
+        render_limit = _resolve_render_limit(requested_limit)
         display_results = _display_rows(filtered_results, render_limit)
 
         logger.info(

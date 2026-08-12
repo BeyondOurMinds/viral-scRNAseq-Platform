@@ -76,7 +76,7 @@ def _build_ora_dotplot(results_df):
     )
     return fig
 
-def _build_gsea_dotplot(results_df):
+def _build_gsea_dotplot(results_df, fdr_cutoff=0.05):
     plot_df = results_df.copy()
     plot_df["Gene Count"] = (
         plot_df["Lead_genes"]
@@ -91,7 +91,7 @@ def _build_gsea_dotplot(results_df):
     )
     plot_df["-log10(FDR)"] = -np.log10(plot_df["FDR q-val"])
     plot_df = plot_df[
-        plot_df["FDR q-val"] <= 0.05
+        plot_df["FDR q-val"] <= fdr_cutoff
     ].copy()
 
     plot_df["absNES"] = plot_df["NES"].abs()
@@ -182,7 +182,7 @@ def _build_ora_barplot(results_df):
     )
     return fig
 
-def _build_gsea_barplot(results_df):
+def _build_gsea_barplot(results_df, fdr_cutoff=0.05):
     plot_df = results_df.copy()
 
     plot_df["Wrapped Term"] = plot_df["Term"].apply(
@@ -197,11 +197,8 @@ def _build_gsea_barplot(results_df):
 
     plot_df["absNES"] = plot_df["NES"].abs()
 
-    plot_df = (
-        plot_df
-        .sort_values(["absNES", "FDR q-val"], ascending=[False, True])
-        .head(20)
-    )
+    plot_df = plot_df[plot_df["FDR q-val"] <= fdr_cutoff].copy()
+    plot_df = plot_df.sort_values(["absNES", "FDR q-val"], ascending=[False, True]).head(20)
 
     fig = px.bar(
         plot_df,
@@ -240,6 +237,28 @@ def _build_gsea_barplot(results_df):
 
 def register_pathway_enrichment_callbacks(app):
     @app.callback(
+        Output("pathway-enrichment-advanced-options-collapse", "is_open"),
+        Input("pathway-enrichment-advanced-options-button", "n_clicks"),
+        State("pathway-enrichment-advanced-options-collapse", "is_open"),
+        prevent_initial_call=True,
+    )
+    def toggle_pathway_advanced_options(n_clicks, is_open):
+        if not n_clicks:
+            return is_open
+        return not is_open
+
+    @app.callback(
+        Output("pathway-enrichment-pvalue-cutoff-input", "value"),
+        Output("pathway-enrichment-logfc-cutoff-input", "value"),
+        Input("pathway-enrichment-advanced-reset-button", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def reset_pathway_advanced_defaults(n_clicks):
+        if not n_clicks:
+            return no_update, no_update
+        return 0.05, 1.0
+
+    @app.callback(
         Output("pathway-enrichment-celltype-dropdown", "options"),
         Output("pathway-enrichment-celltype-dropdown", "value"),
         Input("active-dataset-version", "data"),
@@ -272,8 +291,17 @@ def register_pathway_enrichment_callbacks(app):
         State("pathway-enrichment-celltype-dropdown", "value"),
         State("pathway-enrichment-analysis-dropdown", "value"),
         State("pathway-enrichment-gene-set-dropdown", "value"),
+        State("pathway-enrichment-pvalue-cutoff-input", "value"),
+        State("pathway-enrichment-logfc-cutoff-input", "value"),
     )
-    def run_pathway_enrichment_callback(n_clicks, celltype, method, gene_set):
+    def run_pathway_enrichment_callback(
+        n_clicks,
+        celltype,
+        method,
+        gene_set,
+        pvalue_cutoff,
+        logfc_cutoff,
+    ):
         """
         Run pathway enrichment analysis based on the selected cell type, method, and gene set.
         """
@@ -293,7 +321,18 @@ def register_pathway_enrichment_callbacks(app):
         de_results = de_results_by_celltype[celltype]
         
         # Run pathway enrichment analysis
-        enrichment_results, enr = run_pathway_enrichment(de_results, method, gene_set)
+        enrichment_payload = run_pathway_enrichment(
+            de_results,
+            method,
+            gene_set,
+            pvalue_cutoff=pvalue_cutoff if pvalue_cutoff is not None else 0.05,
+            logfc_cutoff=logfc_cutoff if logfc_cutoff is not None else 1.0,
+        )
+        if enrichment_payload is None:
+            logger.warning("Pathway enrichment analysis returned no results.")
+            return no_update, "No pathway enrichment results found.", no_update, no_update
+
+        enrichment_results, enr = enrichment_payload
         
         if enrichment_results is None or enrichment_results.empty:
             logger.warning("Pathway enrichment analysis returned no results.")
@@ -308,9 +347,15 @@ def register_pathway_enrichment_callbacks(app):
             barplot_fig = _build_ora_barplot(enrichment_results)
             barplot_graph = dcc.Graph(figure=barplot_fig)
         elif method == "GSEA":
-            dotplot_fig = _build_gsea_dotplot(enrichment_results)
+            dotplot_fig = _build_gsea_dotplot(
+                enrichment_results,
+                fdr_cutoff=pvalue_cutoff if pvalue_cutoff is not None else 0.05,
+            )
             dotplot_graph = dcc.Graph(figure=dotplot_fig)
-            barplot_fig = _build_gsea_barplot(enrichment_results)
+            barplot_fig = _build_gsea_barplot(
+                enrichment_results,
+                fdr_cutoff=pvalue_cutoff if pvalue_cutoff is not None else 0.05,
+            )
             barplot_graph = dcc.Graph(figure=barplot_fig)
 
 

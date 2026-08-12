@@ -31,8 +31,76 @@ def create_host_virus_interaction_panel():
                 dbc.Col(
                     dbc.Button("Run Host-Virus Interaction Analysis", id="run-host-virus-interaction-analysis-button", n_clicks=0, color="primary", className="mb-3"),
                     width="auto"
+                ),
+                dbc.Col(
+                    dbc.Button("Advanced Options", id="host-virus-advanced-options-button", n_clicks=0, color="secondary", className="mb-3"),
+                    width="auto"
                 )
             ]),
+            dbc.Collapse(
+                id="host-virus-advanced-options-collapse",
+                is_open=False,
+                children=[
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.P("Minimum expressing cells per host gene"),
+                                    dcc.Input(
+                                        id="host-virus-min-cells-input",
+                                        type="number",
+                                        min=1,
+                                        max=1000,
+                                        step=1,
+                                        value=10,
+                                        style={"width": "100%"},
+                                    ),
+                                ],
+                                md=4,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P("Adjusted p-value significance cutoff"),
+                                    dcc.Input(
+                                        id="host-virus-adj-p-cutoff-input",
+                                        type="number",
+                                        min=0.0001,
+                                        max=1,
+                                        step=0.001,
+                                        value=0.05,
+                                        style={"width": "100%"},
+                                    ),
+                                ],
+                                md=4,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P("Absolute correlation cutoff"),
+                                    dcc.Input(
+                                        id="host-virus-corr-cutoff-input",
+                                        type="number",
+                                        min=0,
+                                        max=1,
+                                        step=0.01,
+                                        value=0.15,
+                                        style={"width": "100%"},
+                                    ),
+                                ],
+                                md=4,
+                            ),
+                        ],
+                        style={"marginBottom": "12px"},
+                    ),
+                    dbc.Button(
+                        "Reset Advanced Defaults",
+                        id="host-virus-advanced-reset-button",
+                        n_clicks=0,
+                        color="secondary",
+                        outline=True,
+                        className="mb-3",
+                    ),
+                ],
+            ),
             dbc.Row([
                 dcc.Dropdown(
                     id="host-virus-interaction-dropdown",

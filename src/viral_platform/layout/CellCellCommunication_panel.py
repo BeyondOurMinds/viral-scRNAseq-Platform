@@ -48,7 +48,81 @@ def create_CCC_panel():
                         ),
                         width="auto",
                     ),
+                    dbc.Col(
+                        dbc.Button(
+                            "Advanced Options",
+                            id="ccc-advanced-options-button",
+                            n_clicks=0,
+                            color="secondary",
+                            className="mb-3",
+                        ),
+                        width="auto",
+                    ),
                 ]
+            ),
+            dbc.Collapse(
+                id="ccc-advanced-options-collapse",
+                is_open=False,
+                children=[
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.P("Maximum magnitude rank (optional)"),
+                                    dcc.Input(
+                                        id="ccc-max-magnitude-rank-input",
+                                        type="number",
+                                        min=0,
+                                        max=1,
+                                        step=0.01,
+                                        style={"width": "100%"},
+                                        placeholder="Leave empty for no rank filter",
+                                    ),
+                                ],
+                                md=4,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P("Maximum specificity rank (optional)"),
+                                    dcc.Input(
+                                        id="ccc-max-specificity-rank-input",
+                                        type="number",
+                                        min=0,
+                                        max=1,
+                                        step=0.01,
+                                        style={"width": "100%"},
+                                        placeholder="Leave empty for no rank filter",
+                                    ),
+                                ],
+                                md=4,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P("Default rendered interactions"),
+                                    dcc.Input(
+                                        id="ccc-default-render-rows-input",
+                                        type="number",
+                                        min=100,
+                                        max=5000,
+                                        step=100,
+                                        value=1000,
+                                        style={"width": "100%"},
+                                    ),
+                                ],
+                                md=4,
+                            ),
+                        ],
+                        style={"marginBottom": "12px"},
+                    ),
+                    dbc.Button(
+                        "Reset Advanced Defaults",
+                        id="ccc-advanced-reset-button",
+                        n_clicks=0,
+                        color="secondary",
+                        outline=True,
+                        className="mb-3",
+                    ),
+                ],
             ),
             # parameter selection
             dbc.Row(
@@ -242,6 +316,7 @@ def create_CCC_panel():
                             min=1,
                             max=5000,
                             step=1,
+                            value=1000,
                         )
                     ),
                     dbc.Col(

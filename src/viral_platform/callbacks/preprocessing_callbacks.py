@@ -13,16 +13,44 @@ logger = logging.getLogger(__name__)
 
 def register_preprocessing_callbacks(app):
     @app.callback(
+        Output("preprocess-advanced-options-collapse", "is_open"),
+        Input("advanced-options-button", "n_clicks"),
+        State("preprocess-advanced-options-collapse", "is_open"),
+        prevent_initial_call=True,
+    )
+    def toggle_preprocess_advanced_options(n_clicks, is_open):
+        if not n_clicks:
+            return is_open
+        return not is_open
+
+    @app.callback(
+        Output("preprocess-hvg-slider", "value"),
+        Output("preprocess-scale-max-slider", "value"),
+        Output("preprocess-neighbors-slider", "value"),
+        Input("preprocess-advanced-reset-button", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def reset_preprocess_advanced_defaults(n_clicks):
+        if not n_clicks:
+            return no_update, no_update, no_update
+        return 2000, 10, 10
+
+    @app.callback(
         Output("preprocess-loading-signal", "children"),
         Output("preprocess-temp-container", "children"),
         Input("run-preprocess-button", "n_clicks"),
+        State("preprocess-hvg-slider", "value"),
+        State("preprocess-scale-max-slider", "value"),
         prevent_initial_call=True,
     )
-    def run_preprocessing(n_clicks):
+    def run_preprocessing(n_clicks, n_top_genes, scale_max_value):
         if not n_clicks:
             return no_update, no_update
         try:
-            preprocess_data()
+            preprocess_data(
+                n_top_genes=n_top_genes if n_top_genes is not None else 2000,
+                scale_max_value=scale_max_value if scale_max_value is not None else 10,
+            )
             adata = get_working_dataset()
             if adata is None:
                 logger.warning("Preprocessing completed but no dataset found in state store.")
@@ -64,14 +92,18 @@ def register_preprocessing_callbacks(app):
         Output("selected-pcs-output", "children"),
         Input("select-pcs-button", "n_clicks"),
         State("pc-slider", "value"),
+        State("preprocess-neighbors-slider", "value"),
         prevent_initial_call=True,
     )
-    def apply_pca_selection(n_clicks, n_pcs):
+    def apply_pca_selection(n_clicks, n_pcs, n_neighbors):
         if not n_clicks or n_pcs is None:
             return no_update, no_update
         try:
             logger.info("Apply PCA selection clicked. n_clicks=%s, n_pcs=%s", n_clicks, n_pcs)
-            run_clustering(n_dims=n_pcs)
+            run_clustering(
+                n_dims=n_pcs,
+                n_neighbors=n_neighbors if n_neighbors is not None else 10,
+            )
             logger.info("PCA selection applied successfully with %d PCs.", n_pcs)
             graph = create_umap_plot()
             cache_results(**{"selected-pcs-output": graph})

@@ -82,7 +82,79 @@ def create_viral_burden_panel():
                             ),
                         ],
                         style={"marginBottom": "12px"},
-                    )
+                    ),
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.P("Infected cell threshold (viral counts)"),
+                                    dcc.Input(
+                                        id="viral-burden-infected-threshold-input",
+                                        type="number",
+                                        min=0,
+                                        step=1,
+                                        value=0,
+                                        style={"width": "100%"},
+                                    ),
+                                ],
+                                md=3,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P("Association min cells per host gene"),
+                                    dcc.Input(
+                                        id="viral-burden-association-min-cells-input",
+                                        type="number",
+                                        min=1,
+                                        max=1000,
+                                        step=1,
+                                        value=10,
+                                        style={"width": "100%"},
+                                    ),
+                                ],
+                                md=3,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P("Association correlation cutoff"),
+                                    dcc.Input(
+                                        id="viral-burden-association-corr-threshold-input",
+                                        type="number",
+                                        min=0,
+                                        max=1,
+                                        step=0.01,
+                                        value=0.3,
+                                        style={"width": "100%"},
+                                    ),
+                                ],
+                                md=3,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P("Association FDR cutoff"),
+                                    dcc.Input(
+                                        id="viral-burden-association-fdr-threshold-input",
+                                        type="number",
+                                        min=0.0001,
+                                        max=1,
+                                        step=0.001,
+                                        value=0.05,
+                                        style={"width": "100%"},
+                                    ),
+                                ],
+                                md=3,
+                            ),
+                        ],
+                        style={"marginBottom": "12px"},
+                    ),
+                    dbc.Button(
+                        "Reset Advanced Defaults",
+                        id="viral-burden-advanced-reset-button",
+                        n_clicks=0,
+                        color="secondary",
+                        outline=True,
+                        className="mb-3",
+                    ),
                 ],
             ),
 

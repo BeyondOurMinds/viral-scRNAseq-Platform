@@ -14,7 +14,17 @@ MIN_GENE_COUNT = 10
 MIN_SAMPLES_PER_GENE = 2
 
 
-def run_differential_expression(adata, grouping, group1, group2, celltype="All Cells"):
+def run_differential_expression(
+    adata,
+    grouping,
+    group1,
+    group2,
+    celltype="All Cells",
+    min_psbulk_cells=MIN_PSBULK_CELLS,
+    min_psbulk_counts=MIN_PSBULK_COUNTS,
+    min_gene_count=MIN_GENE_COUNT,
+    min_samples_per_gene=MIN_SAMPLES_PER_GENE,
+):
     """
     Run differential expression analysis on the given AnnData object based on the specified grouping variable.
     This function checks for biological replicates and creates a pseudobulk dataset before performing DE analysis.
@@ -25,6 +35,10 @@ def run_differential_expression(adata, grouping, group1, group2, celltype="All C
     - group1: The first group for comparison.
     - group2: The second group for comparison.
     - celltype: The cell type to filter for DE analysis. Default is "All Cells".
+    - min_psbulk_cells: Minimum cells per pseudobulk sample kept for DE.
+    - min_psbulk_counts: Minimum counts per pseudobulk sample kept for DE.
+    - min_gene_count: Minimum count per gene in a sample to be considered expressed.
+    - min_samples_per_gene: Minimum number of samples where gene passes min_gene_count.
     Returns:
     - A message indicating the result of the DE analysis or any issues encountered.
     """
@@ -37,8 +51,8 @@ def run_differential_expression(adata, grouping, group1, group2, celltype="All C
     # Remove tiny pseudobulk profiles that are mostly zeros and can stall DE fitting.
     if "psbulk_cells" in adata.obs.columns and "psbulk_counts" in adata.obs.columns:
         keep_mask = (
-            (adata.obs["psbulk_cells"] >= MIN_PSBULK_CELLS)
-            & (adata.obs["psbulk_counts"] >= MIN_PSBULK_COUNTS)
+            (adata.obs["psbulk_cells"] >= min_psbulk_cells)
+            & (adata.obs["psbulk_counts"] >= min_psbulk_counts)
         )
         removed = int((~keep_mask).sum())
         if removed > 0:
@@ -46,8 +60,8 @@ def run_differential_expression(adata, grouping, group1, group2, celltype="All C
             logger.info(
                 "Filtered %s low-information pseudobulks (<%s cells or <%s counts). Remaining samples: %s",
                 removed,
-                MIN_PSBULK_CELLS,
-                MIN_PSBULK_COUNTS,
+                min_psbulk_cells,
+                min_psbulk_counts,
                 adata.n_obs,
             )
 
@@ -55,7 +69,11 @@ def run_differential_expression(adata, grouping, group1, group2, celltype="All C
         return "Too few pseudobulk samples after filtering; relax thresholds.", ""
 
     "DE analysis logic for the selected cell type here"
-    counts = prepare_counts(adata)
+    counts = prepare_counts(
+        adata,
+        min_gene_count=min_gene_count,
+        min_samples_per_gene=min_samples_per_gene,
+    )
     if counts is None or counts.empty or counts.shape[1] == 0:
         logger.warning(
             "Skipping DE for cell type '%s': no informative genes remained after filtering.",
@@ -94,7 +112,11 @@ def run_differential_expression(adata, grouping, group1, group2, celltype="All C
     logger.info("Differential expression analysis completed successfully.")
     return adata, results
 
-def prepare_counts(adata):
+def prepare_counts(
+    adata,
+    min_gene_count=MIN_GENE_COUNT,
+    min_samples_per_gene=MIN_SAMPLES_PER_GENE,
+):
     if issparse(adata.X):
         counts = pd.DataFrame(
             adata.X.toarray(),
@@ -113,7 +135,7 @@ def prepare_counts(adata):
     counts = counts.clip(lower=0).round().astype("int64")
 
     # Keep genes with a minimal signal across pseudobulk samples.
-    informative_gene_mask = (counts >= MIN_GENE_COUNT).sum(axis=0) >= MIN_SAMPLES_PER_GENE
+    informative_gene_mask = (counts >= min_gene_count).sum(axis=0) >= min_samples_per_gene
     counts = counts.loc[:, informative_gene_mask]
 
     print("Counts DataFrame shape:", counts.shape)

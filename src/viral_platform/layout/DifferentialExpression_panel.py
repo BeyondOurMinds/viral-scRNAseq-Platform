@@ -108,6 +108,81 @@ def create_differential_expression_panel():
                 ],
                 style={"marginTop": "8px"},
             ),
+            dbc.Collapse(
+                id="differential-expression-advanced-options-collapse",
+                is_open=False,
+                children=[
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.P("Minimum cells per pseudobulk sample"),
+                                    dcc.Slider(
+                                        id="de-min-psbulk-cells-slider",
+                                        min=1,
+                                        max=100,
+                                        step=1,
+                                        value=10,
+                                        marks={1: "1", 10: "10", 50: "50", 100: "100"},
+                                    ),
+                                ],
+                                md=3,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P("Minimum counts per pseudobulk sample"),
+                                    dcc.Slider(
+                                        id="de-min-psbulk-counts-slider",
+                                        min=100,
+                                        max=10000,
+                                        step=100,
+                                        value=1000,
+                                        marks={100: "100", 1000: "1k", 5000: "5k", 10000: "10k"},
+                                    ),
+                                ],
+                                md=3,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P("Minimum gene count"),
+                                    dcc.Slider(
+                                        id="de-min-gene-count-slider",
+                                        min=1,
+                                        max=50,
+                                        step=1,
+                                        value=10,
+                                        marks={1: "1", 10: "10", 25: "25", 50: "50"},
+                                    ),
+                                ],
+                                md=3,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P("Minimum samples per gene"),
+                                    dcc.Slider(
+                                        id="de-min-samples-per-gene-slider",
+                                        min=1,
+                                        max=10,
+                                        step=1,
+                                        value=2,
+                                        marks={1: "1", 2: "2", 5: "5", 10: "10"},
+                                    ),
+                                ],
+                                md=3,
+                            ),
+                        ],
+                        style={"marginBottom": "12px"},
+                    ),
+                    dbc.Button(
+                        "Reset Advanced Defaults",
+                        id="de-advanced-reset-button",
+                        n_clicks=0,
+                        color="secondary",
+                        outline=True,
+                        className="mb-3",
+                    ),
+                ],
+            ),
             
             dcc.Loading(
                 html.Div(

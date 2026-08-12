@@ -38,6 +38,59 @@ def create_pathway_enrichment_panel():
                 ),
             ]),
 
+            dbc.Collapse(
+                id="pathway-enrichment-advanced-options-collapse",
+                is_open=False,
+                children=[
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.P("Adjusted p-value / FDR cutoff"),
+                                    dcc.Input(
+                                        id="pathway-enrichment-pvalue-cutoff-input",
+                                        type="number",
+                                        min=0.0001,
+                                        max=1,
+                                        step=0.001,
+                                        value=0.05,
+                                        style={"width": "100%"},
+                                    ),
+                                ],
+                                md=4,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P("Absolute log2 fold-change cutoff (ORA)"),
+                                    dcc.Input(
+                                        id="pathway-enrichment-logfc-cutoff-input",
+                                        type="number",
+                                        min=0,
+                                        max=10,
+                                        step=0.1,
+                                        value=1.0,
+                                        style={"width": "100%"},
+                                    ),
+                                ],
+                                md=4,
+                            ),
+                            dbc.Col(
+                                dbc.Button(
+                                    "Reset Advanced Defaults",
+                                    id="pathway-enrichment-advanced-reset-button",
+                                    n_clicks=0,
+                                    color="secondary",
+                                    outline=True,
+                                    className="mt-4",
+                                ),
+                                md=4,
+                            ),
+                        ],
+                        style={"marginBottom": "12px"},
+                    ),
+                ],
+            ),
+
             # parameter selection
             dbc.Row([
                 dbc.Col(

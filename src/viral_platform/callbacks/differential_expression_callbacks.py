@@ -533,6 +533,30 @@ def register_differential_expression_callbacks(app):
     """Register callbacks that keep DE dropdown options synchronized with dataset metadata/state."""
 
     @app.callback(
+        Output("differential-expression-advanced-options-collapse", "is_open"),
+        Input("differential-expression-advanced-options-button", "n_clicks"),
+        State("differential-expression-advanced-options-collapse", "is_open"),
+        prevent_initial_call=True,
+    )
+    def toggle_de_advanced_options(n_clicks, is_open):
+        if not n_clicks:
+            return is_open
+        return not is_open
+
+    @app.callback(
+        Output("de-min-psbulk-cells-slider", "value"),
+        Output("de-min-psbulk-counts-slider", "value"),
+        Output("de-min-gene-count-slider", "value"),
+        Output("de-min-samples-per-gene-slider", "value"),
+        Input("de-advanced-reset-button", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def reset_de_advanced_defaults(n_clicks):
+        if not n_clicks:
+            return no_update, no_update, no_update, no_update
+        return 10, 1000, 10, 2
+
+    @app.callback(
         Output("de-reference-file-radio", "options"),
         Output("de-reference-file-radio", "value"),
         Input("scmovir-refresh-token", "data"),
@@ -953,8 +977,23 @@ def register_differential_expression_callbacks(app):
         State("group2-dropdown", "value"),
         State("celltype-variable-dropdown", "value"),
         State("celltype-dropdown", "value"),
+        State("de-min-psbulk-cells-slider", "value"),
+        State("de-min-psbulk-counts-slider", "value"),
+        State("de-min-gene-count-slider", "value"),
+        State("de-min-samples-per-gene-slider", "value"),
     )
-    def run_DE_analysis(n_clicks, grouping, group1, group2, celltype_column, celltype):
+    def run_DE_analysis(
+        n_clicks,
+        grouping,
+        group1,
+        group2,
+        celltype_column,
+        celltype,
+        min_psbulk_cells,
+        min_psbulk_counts,
+        min_gene_count,
+        min_samples_per_gene,
+    ):
         """Run differential expression analysis when the button is clicked."""
         if n_clicks == 0:
             return (
@@ -1034,7 +1073,15 @@ def register_differential_expression_callbacks(app):
                 continue
 
             adata, results = run_differential_expression(
-                adata, grouping, group1, group2, ct
+                adata,
+                grouping,
+                group1,
+                group2,
+                ct,
+                min_psbulk_cells=min_psbulk_cells if min_psbulk_cells is not None else 10,
+                min_psbulk_counts=min_psbulk_counts if min_psbulk_counts is not None else 1000,
+                min_gene_count=min_gene_count if min_gene_count is not None else 10,
+                min_samples_per_gene=min_samples_per_gene if min_samples_per_gene is not None else 2,
             )
             if adata is None or not hasattr(adata, "obs"):
                 logger.warning(
