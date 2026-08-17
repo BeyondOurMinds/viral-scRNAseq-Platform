@@ -6,6 +6,7 @@ from viral_platform.analysis.host_virus_interaction import host_virus_interactio
 from viral_platform.analysis.Intact import load_intact_reference, build_intact_cytoscape_elements, get_significant_de_genes, get_de_genes_for_celltype, run_intact_interpretation
 from pathlib import Path
 import logging
+import pandas as pd
 
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,47 @@ def make_sortable_table(df, table_id):
         style_cell={"textAlign": "left", "padding": "6px", "fontSize": "13px"},
         style_header={"fontWeight": "600"},
     )
+
+
+def _coerce_de_results_by_celltype(raw_results):
+    """Normalize DE result payloads into DataFrames keyed by cell type."""
+    normalized = {}
+    if not isinstance(raw_results, dict):
+        return normalized
+
+    for celltype, payload in raw_results.items():
+        if isinstance(payload, pd.DataFrame):
+            normalized[celltype] = payload
+            continue
+
+        if isinstance(payload, list):
+            # Supports list-of-records payloads from serialized state snapshots.
+            normalized[celltype] = pd.DataFrame(payload)
+            continue
+
+        if isinstance(payload, dict):
+            if payload.get("__type__") == "dataframe":
+                records = payload.get("records", [])
+                columns = payload.get("columns", [])
+                df = pd.DataFrame(records)
+                if columns:
+                    ordered_columns = [col for col in columns if col in df.columns]
+                    trailing_columns = [col for col in df.columns if col not in ordered_columns]
+                    df = df[ordered_columns + trailing_columns]
+                normalized[celltype] = df
+                continue
+
+            if "records" in payload and isinstance(payload.get("records"), list):
+                normalized[celltype] = pd.DataFrame(payload.get("records", []))
+                continue
+
+        logger.warning(
+            "Skipping DE results for cell type '%s' due to unsupported payload type: %s",
+            celltype,
+            type(payload).__name__,
+        )
+
+    return normalized
 
 def register_host_virus_interaction_callbacks(app):
     @app.callback(
@@ -255,7 +297,9 @@ def register_host_virus_interaction_callbacks(app):
         """
         # Access the global state to get the DE results by cell type
         state = get_state_store()
-        de_results_by_celltype = state.get("DE_results", {}).get("results_by_celltype", {})
+        de_results_by_celltype = _coerce_de_results_by_celltype(
+            state.get("DE_results", {}).get("results_by_celltype", {})
+        )
         
         # Extract cell types from the keys of the DE results dictionary
         cell_types = list(de_results_by_celltype.keys())
@@ -308,7 +352,12 @@ def register_host_virus_interaction_callbacks(app):
         if gene_source == "deg":
             # Load DE results for the selected cell type
             state = get_state_store()
-            de_results_by_celltype = state.get("DE_results", {}).get("results_by_celltype", {})
+            de_results_by_celltype = _coerce_de_results_by_celltype(
+                state.get("DE_results", {}).get("results_by_celltype", {})
+            )
+
+            if not de_results_by_celltype:
+                return "done", "No differential expression results found. Run DE analysis first.", []
 
             for celltype, df in de_results_by_celltype.items():
                 print(f"\nCell type: {celltype}")
@@ -322,7 +371,7 @@ def register_host_virus_interaction_callbacks(app):
                 )
                 genes = list(gene_to_celltypes.keys())
             else:
-                de_results = de_results_by_celltype[selected_celltype]
+                de_results = de_results_by_celltype.get(selected_celltype)
                 if de_results is None:
                     return "done", f"No DE results found for cell type: {selected_celltype}.", []
                 genes = get_de_genes_for_celltype(de_results_by_celltype, selected_celltype)
