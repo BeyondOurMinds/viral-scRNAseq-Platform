@@ -1,280 +1,32 @@
-import io
-import json
-import pickle
+import logging
 import re
+import shutil
+import tempfile
+import time
 import zipfile
 from datetime import datetime, timezone
+from pathlib import Path
+import tkinter as tk
+from tkinter import filedialog
 
 import anndata as ad
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import scanpy as sc
 
-from viral_platform.scmovir.app_paths import get_app_data_dir
 from viral_platform.state.dataset_store import (
-    get_state_snapshot,
     get_state_store,
     get_working_dataset,
-    restore_state_snapshot,
-    set_dataset,
-    set_results_cache,
-    set_working_dataset,
-    sync_state_with_dataset,
 )
 from viral_platform.utils.logging_config import get_captured_logs_text
 
-SAVE_FILENAME = "session.h5ad"
-RESULTS_CACHE_FILENAME = "results_cache.pkl"
-STATE_UNS_KEY = "viral_platform_state_history"
-SAVES_ROOT = get_app_data_dir() / "saves"
 
-_INVALID_PATH_CHARS = re.compile(r'[<>:"/\\|?*]+')
+logger = logging.getLogger(__name__)
 
 
-def ensure_saves_dir():
-    SAVES_ROOT.mkdir(parents=True, exist_ok=True)
-    return SAVES_ROOT
-
-
-def get_saves_dir():
-    return ensure_saves_dir()
-
-
-def normalize_save_name(name):
-    cleaned = (name or "").strip()
-    cleaned = _INVALID_PATH_CHARS.sub("_", cleaned)
-    cleaned = "_".join(cleaned.split())
-    return cleaned.strip("._")
-
-
-def _to_h5ad_compatible(value):
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-
-    if isinstance(value, np.generic):
-        return value.item()
-
-    if isinstance(value, np.ndarray):
-        return [_to_h5ad_compatible(item) for item in value.tolist()]
-
-    if isinstance(value, pd.DataFrame):
-        return {
-            "__type__": "dataframe",
-            "columns": [str(col) for col in value.columns],
-            "records": [_to_h5ad_compatible(row) for row in value.to_dict(orient="records")],
-        }
-
-    if isinstance(value, pd.Series):
-        return {
-            "__type__": "series",
-            "name": str(value.name),
-            "values": [_to_h5ad_compatible(item) for item in value.tolist()],
-        }
-
-    if isinstance(value, dict):
-        return {str(k): _to_h5ad_compatible(v) for k, v in value.items()}
-
-    if isinstance(value, (list, tuple, set)):
-        return [_to_h5ad_compatible(item) for item in value]
-
-    return {
-        "__type__": "repr",
-        "value": repr(value),
-    }
-
-
-def _component_to_jsonable(value):
-    """Convert cached Dash components into plain Python JSON-compatible structures."""
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-
-    if isinstance(value, np.generic):
-        return value.item()
-
-    if isinstance(value, np.ndarray):
-        return [_component_to_jsonable(item) for item in value.tolist()]
-
-    if isinstance(value, pd.DataFrame):
-        return {
-            "__type__": "dataframe",
-            "columns": [str(col) for col in value.columns],
-            "records": [_component_to_jsonable(row) for row in value.to_dict(orient="records")],
-        }
-
-    if isinstance(value, pd.Series):
-        return [_component_to_jsonable(item) for item in value.tolist()]
-
-    if hasattr(value, "to_plotly_json"):
-        try:
-            value = value.to_plotly_json()
-        except Exception:
-            return repr(value)
-
-    if isinstance(value, dict):
-        return {str(k): _component_to_jsonable(v) for k, v in value.items()}
-
-    if isinstance(value, (list, tuple, set)):
-        return [_component_to_jsonable(item) for item in value]
-
-    return repr(value)
-
-
-def _make_results_cache_portable(results_cache):
-    portable = {}
-    for key, value in (results_cache or {}).items():
-        portable[str(key)] = _component_to_jsonable(value)
-    return portable
-
-
-def _write_h5ad_with_nullable_strings(adata, path):
-    """Opt-in to AnnData nullable-string writing for cross-panel session saves."""
-    setting_name = "allow_write_nullable_strings"
-    if not hasattr(ad.settings, setting_name):
-        adata.write_h5ad(str(path))
-        return
-
-    prior = getattr(ad.settings, setting_name)
-    try:
-        setattr(ad.settings, setting_name, True)
-        adata.write_h5ad(str(path))
-    finally:
-        setattr(ad.settings, setting_name, prior)
-
-
-def _serialize_history_for_uns():
-    snapshot = get_state_snapshot(include_results_cache=False)
-    # Persist as JSON text to avoid h5ad nested-object coercion issues.
-    return json.dumps(_to_h5ad_compatible(snapshot), ensure_ascii=False)
-
-
-def _deserialize_history_from_uns(stored_value):
-    if isinstance(stored_value, dict):
-        # Backward compatibility for earlier saves that stored a mapping directly.
-        return stored_value
-
-    if isinstance(stored_value, str):
-        try:
-            loaded = json.loads(stored_value)
-            return loaded if isinstance(loaded, dict) else {}
-        except Exception:
-            return {}
-
-    return {}
-
-
-def _load_results_cache_from_disk(save_dir):
-    cache_path = save_dir / RESULTS_CACHE_FILENAME
-    if not cache_path.exists():
-        return {}, None
-
-    try:
-        with cache_path.open("rb") as handle:
-            loaded = pickle.load(handle)
-        if isinstance(loaded, dict):
-            return loaded, None
-        return {}, "Results cache file was not a dictionary and was skipped."
-    except Exception as exc:
-        return {}, f"Could not load results cache: {exc}"
-
-
-def list_saved_sessions():
-    saves_dir = ensure_saves_dir()
-    sessions = []
-
-    for child in saves_dir.iterdir():
-        if not child.is_dir():
-            continue
-
-        session_file = child / SAVE_FILENAME
-        if not session_file.exists():
-            continue
-
-        sessions.append({
-            "name": child.name,
-            "path": child,
-            "mtime": session_file.stat().st_mtime,
-        })
-
-    sessions.sort(key=lambda item: item["mtime"], reverse=True)
-    return sessions
-
-
-def save_current_session(save_name):
-    name = normalize_save_name(save_name)
-    if not name:
-        raise ValueError("Please enter a save name for the folder.")
-
-    adata = get_working_dataset()
-    if adata is None:
-        raise ValueError("No working dataset is loaded. Upload data before saving.")
-
-    saves_dir = ensure_saves_dir()
-    save_dir = saves_dir / name
-    save_dir.mkdir(parents=True, exist_ok=True)
-
-    session_path = save_dir / SAVE_FILENAME
-    warnings = []
-
-    adata_to_save = adata.copy()
-    adata_to_save.uns[STATE_UNS_KEY] = _serialize_history_for_uns()
-    adata_to_save.uns["viral_platform_saved_at_utc"] = datetime.now(timezone.utc).isoformat()
-
-    _write_h5ad_with_nullable_strings(adata_to_save, session_path)
-
-    cache_path = save_dir / RESULTS_CACHE_FILENAME
-    try:
-        with cache_path.open("wb") as handle:
-            pickle.dump(
-                _make_results_cache_portable(get_state_store().get("results_cache", {})),
-                handle,
-            )
-    except Exception as exc:
-        warnings.append(f"Saved dataset but could not persist results cache: {exc}")
-
-    return {
-        "name": name,
-        "folder": save_dir,
-        "session_file": session_path,
-        "warnings": warnings,
-    }
-
-
-def load_saved_session(save_name):
-    name = normalize_save_name(save_name)
-    if not name:
-        raise ValueError("Select a save folder to load.")
-
-    save_dir = ensure_saves_dir() / name
-    session_path = save_dir / SAVE_FILENAME
-    if not session_path.exists():
-        raise FileNotFoundError(f"No saved session found at {session_path}")
-
-    adata = sc.read_h5ad(str(session_path))
-    stored_snapshot = _deserialize_history_from_uns(adata.uns.get(STATE_UNS_KEY, {}))
-
-    set_dataset(adata.copy())
-    set_working_dataset(adata)
-
-    restore_state_snapshot(stored_snapshot, include_results_cache=False)
-
-    results_cache, cache_warning = _load_results_cache_from_disk(save_dir)
-    set_results_cache(results_cache)
-    sync_state_with_dataset(adata)
-
-    warnings = []
-    if cache_warning:
-        warnings.append(cache_warning)
-
-    return {
-        "name": name,
-        "cells": int(adata.n_obs),
-        "genes": int(adata.n_vars),
-        "warnings": warnings,
-    }
-
+# Cached Dash component traversal
 
 def _walk_cached_nodes(node):
+    """Recursively find Plotly figures and Dash tables in cached components."""
     if node is None:
         return
 
@@ -290,18 +42,31 @@ def _walk_cached_nodes(node):
             return
 
     if isinstance(node, dict):
-        if "type" in node and "props" in node and isinstance(node.get("props"), dict):
+        # Dash component
+        if (
+            "type" in node
+            and "props" in node
+            and isinstance(node.get("props"), dict)
+        ):
             props = node.get("props") or {}
 
+            # Plotly figure
             figure_payload = props.get("figure")
+
             if isinstance(figure_payload, go.Figure):
                 yield ("figure", figure_payload)
+
             elif isinstance(figure_payload, dict):
                 yield ("figure", figure_payload)
 
+            # Dash DataTable
             table_columns = props.get("columns")
             table_data = props.get("data")
-            if isinstance(table_columns, list) and isinstance(table_data, list):
+
+            if (
+                isinstance(table_columns, list)
+                and isinstance(table_data, list)
+            ):
                 yield (
                     "table",
                     {
@@ -310,31 +75,48 @@ def _walk_cached_nodes(node):
                     },
                 )
 
+            # Recursively inspect other properties
             for prop_name, prop_value in props.items():
                 if prop_name in {"figure", "columns", "data"}:
                     continue
+
                 yield from _walk_cached_nodes(prop_value)
+
             return
 
-        if isinstance(node.get("data"), list) and isinstance(node.get("layout"), dict):
+        # Raw Plotly figure dictionary
+        if (
+            isinstance(node.get("data"), list)
+            and isinstance(node.get("layout"), dict)
+        ):
             yield ("figure", node)
             return
 
+        # Actual Plotly Figure
         if isinstance(node, go.Figure):
             yield ("figure", node)
             return
 
+        # Generic dictionary
         for value in node.values():
             yield from _walk_cached_nodes(value)
 
 
 def _safe_component_name(text, fallback):
-    cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "_", text or "")
+    """Convert a cache key into a safe filename component."""
+    cleaned = re.sub(
+        r"[^A-Za-z0-9_.-]+",
+        "_",
+        text or "",
+    )
+
     cleaned = cleaned.strip("._")
+
     return cleaned or fallback
 
 
 def _extract_tables_and_figures(results_cache):
+    """Extract tables and Plotly figures from cached Dash components."""
     tables = []
     figures = []
 
@@ -343,117 +125,597 @@ def _extract_tables_and_figures(results_cache):
         figure_index = 1
 
         for item_type, payload in _walk_cached_nodes(component):
+
             if item_type == "table":
                 columns = payload.get("columns") or []
                 data = payload.get("data") or []
+
                 if not isinstance(data, list):
                     continue
 
-                table_name = _safe_component_name(cache_key, "table")
-                table_id = f"{table_name}_table_{table_index}"
+                table_name = _safe_component_name(
+                    cache_key,
+                    "table",
+                )
+
+                table_id = (
+                    f"{table_name}_table_{table_index}"
+                )
+
                 table_index += 1
 
                 df = pd.DataFrame(data)
-                column_ids = [col.get("id") for col in columns if isinstance(col, dict) and col.get("id")]
-                if column_ids and all(col in df.columns for col in column_ids):
+
+                column_ids = [
+                    column.get("id")
+                    for column in columns
+                    if (
+                        isinstance(column, dict)
+                        and column.get("id")
+                    )
+                ]
+
+                if (
+                    column_ids
+                    and all(
+                        column in df.columns
+                        for column in column_ids
+                    )
+                ):
                     df = df[column_ids]
 
-                tables.append((table_id, df))
+                tables.append(
+                    (
+                        table_id,
+                        df,
+                    )
+                )
 
-            if item_type == "figure":
-                fig_name = _safe_component_name(cache_key, "figure")
-                figure_id = f"{fig_name}_figure_{figure_index}"
+            elif item_type == "figure":
+                figure_name = _safe_component_name(
+                    cache_key,
+                    "figure",
+                )
+
+                figure_id = (
+                    f"{figure_name}_figure_{figure_index}"
+                )
+
                 figure_index += 1
-                figures.append((figure_id, payload))
+
+                figures.append(
+                    (
+                        figure_id,
+                        payload,
+                    )
+                )
 
     return tables, figures
 
 
+# Plotly export
 def _prepare_figure_for_export(figure_like):
-    """Return a Plotly figure tuned for static export readability."""
-    fig = figure_like if isinstance(figure_like, go.Figure) else go.Figure(figure_like)
-    fig = go.Figure(fig)
+    """Prepare a Plotly figure for readable SVG export."""
+    if isinstance(figure_like, go.Figure):
+        fig = go.Figure(figure_like)
+    else:
+        fig = go.Figure(figure_like)
 
     legend = fig.layout.legend
-    if legend and getattr(legend, "orientation", None) == "h":
+
+    if (
+        legend
+        and getattr(legend, "orientation", None) == "h"
+    ):
         current_margin = fig.layout.margin or {}
-        bottom_margin = max(int(getattr(current_margin, "b", 0) or 0), 220)
+
+        bottom_margin = max(
+            int(
+                getattr(
+                    current_margin,
+                    "b",
+                    0,
+                )
+                or 0
+            ),
+            220,
+        )
+
         fig.update_layout(
             margin=dict(
-                l=int(getattr(current_margin, "l", 0) or 0),
-                r=int(getattr(current_margin, "r", 0) or 0),
-                t=int(getattr(current_margin, "t", 60) or 60),
+                l=int(
+                    getattr(
+                        current_margin,
+                        "l",
+                        0,
+                    )
+                    or 0
+                ),
+                r=int(
+                    getattr(
+                        current_margin,
+                        "r",
+                        0,
+                    )
+                    or 0
+                ),
+                t=int(
+                    getattr(
+                        current_margin,
+                        "t",
+                        60,
+                    )
+                    or 60
+                ),
                 b=bottom_margin,
             ),
-            width=max(int(getattr(fig.layout, "width", 0) or 0), 1600),
-            height=max(int(getattr(fig.layout, "height", 0) or 0), 900),
+            width=max(
+                int(
+                    getattr(
+                        fig.layout,
+                        "width",
+                        0,
+                    )
+                    or 0
+                ),
+                1600,
+            ),
+            height=max(
+                int(
+                    getattr(
+                        fig.layout,
+                        "height",
+                        0,
+                    )
+                    or 0
+                ),
+                900,
+            ),
         )
 
     return fig
 
 
-def _build_log_text(include_metadata, include_tables_figures):
+# H5AD
+def _write_h5ad_file(adata, path):
+    """Write AnnData directly to the requested H5AD path."""
+    setting_name = "allow_write_nullable_strings"
+
+    if hasattr(ad.settings, setting_name):
+        previous_setting = getattr(
+            ad.settings,
+            setting_name,
+        )
+
+        try:
+            setattr(
+                ad.settings,
+                setting_name,
+                True,
+            )
+
+            adata.write_h5ad(str(path))
+
+        finally:
+            setattr(
+                ad.settings,
+                setting_name,
+                previous_setting,
+            )
+
+    else:
+        adata.write_h5ad(str(path))
+
+
+# Log export
+def _build_log_text():
+    """Build the log file included in the ZIP export."""
     adata = get_working_dataset()
+
     captured_logs = get_captured_logs_text().strip()
 
     lines = [
-        "viral_platform logger export",
+        "SCJoseki export",
         f"created_utc: {datetime.now(timezone.utc).isoformat()}",
         f"cells: {int(adata.n_obs) if adata is not None else 0}",
         f"genes: {int(adata.n_vars) if adata is not None else 0}",
-        f"included_metadata_csv: {bool(include_metadata)}",
-        f"included_tables_figures: {bool(include_tables_figures)}",
         "",
         "captured_logger_output:",
-        captured_logs if captured_logs else "<no logger messages captured>",
+        (
+            captured_logs
+            if captured_logs
+            else "<no logger messages captured>"
+        ),
     ]
+
     return "\n".join(lines)
 
 
-def create_optional_exports_bundle(include_metadata=False, include_tables_figures=False, include_log=False):
-    if not any([include_metadata, include_tables_figures, include_log]):
-        raise ValueError("Select at least one optional export item.")
+# Native Windows Save As dialog
+def _choose_save_path(
+    title,
+    initial_filename,
+    filetypes,
+):
+    """
+    Open a native Windows Save As dialog.
 
-    adata = get_working_dataset()
-    if adata is None:
-        raise ValueError("No working dataset is loaded. Upload data before exporting.")
+    Returns the selected path as a Path, or None if cancelled.
+    """
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+
+    try:
+        selected_path = filedialog.asksaveasfilename(
+            title=title,
+            initialfile=initial_filename,
+            filetypes=filetypes,
+            defaultextension=filetypes[0][1],
+        )
+
+    finally:
+        root.destroy()
+
+    if not selected_path:
+        return None
+
+    return Path(selected_path)
+
+
+# ZIP creation
+def _create_zip_without_h5ad(adata):
+    """
+    Create the results ZIP without the H5AD.
+
+    The returned ZIP is stored in a temporary file rather than
+    returned as a giant in-memory Dash payload.
+    """
+    start_time = time.perf_counter()
+
+    temp_dir = tempfile.mkdtemp(
+        prefix="scjoseki_export_"
+    )
+
+    zip_path = Path(temp_dir) / (
+        "scjoseki_export_"
+        f"{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        ".zip"
+    )
 
     file_payloads = {}
     notes = []
 
-    if include_metadata:
-        metadata_csv = adata.obs.copy().to_csv(index=True)
-        file_payloads["metadata/metadata.csv"] = metadata_csv.encode("utf-8")
+    # Metadata
+    metadata_start = time.perf_counter()
 
-    if include_tables_figures:
-        tables, figures = _extract_tables_and_figures(get_state_store().get("results_cache", {}))
+    metadata_csv = (
+        adata.obs
+        .copy()
+        .to_csv(index=True)
+    )
 
-        for table_name, table_df in tables:
-            file_payloads[f"tables/{table_name}.csv"] = table_df.to_csv(index=False).encode("utf-8")
+    file_payloads[
+        "metadata/metadata.csv"
+    ] = metadata_csv.encode("utf-8")
 
-        for figure_name, figure_dict in figures:
-            try:
-                export_fig = _prepare_figure_for_export(figure_dict)
-                svg_bytes = export_fig.to_image(format="svg")
-                file_payloads[f"figures/{figure_name}.svg"] = svg_bytes
-            except Exception as exc:
-                notes.append(f"Could not export figure '{figure_name}' as SVG: {exc}")
+    logger.info(
+        "Metadata export completed in %.2f seconds (%d bytes).",
+        time.perf_counter() - metadata_start,
+        len(file_payloads["metadata/metadata.csv"]),
+    )
 
-        notes.append(f"Exported {len(tables)} table(s).")
-        notes.append(f"Exported {len([name for name in file_payloads if name.startswith('figures/')])} figure(s) as SVG.")
+    # Tables and figures
+    results_cache = get_state_store().get(
+        "results_cache",
+        {},
+    )
 
-    if include_log:
-        log_text = _build_log_text(include_metadata, include_tables_figures)
-        file_payloads["logs/session_export.log"] = log_text.encode("utf-8")
+    tables, figures = _extract_tables_and_figures(
+        results_cache
+    )
 
-    if not file_payloads:
-        raise ValueError("No optional export files were generated.")
+    logger.info(
+        "Export contains %d tables and %d figures.",
+        len(tables),
+        len(figures),
+    )
 
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+    # Tables
+    table_start = time.perf_counter()
+
+    for table_name, table_df in tables:
+        file_payloads[
+            f"tables/{table_name}.csv"
+        ] = table_df.to_csv(
+            index=False
+        ).encode("utf-8")
+
+    logger.info(
+        "Table export completed in %.2f seconds.",
+        time.perf_counter() - table_start,
+    )
+
+    # Figures
+    exported_figure_count = 0
+
+    for figure_name, figure_dict in figures:
+        try:
+            logger.info(
+                "Starting SVG export: %s",
+                figure_name,
+            )
+
+            start_time = time.perf_counter()
+
+            export_fig = _prepare_figure_for_export(
+                figure_dict
+            )
+
+            logger.info(
+                "Prepared figure '%s' in %.2f seconds.",
+                figure_name,
+                time.perf_counter() - start_time,
+            )
+
+            if getattr(
+                export_fig,
+                "data",
+                None,
+            ) is None:
+                raise ValueError(
+                    "Figure has no data."
+                )
+
+            svg_start = time.perf_counter()
+
+            svg_bytes = export_fig.to_image(
+                format="svg"
+            )
+
+            logger.info(
+                "Rendered '%s' to SVG in %.2f seconds (%d bytes).",
+                figure_name,
+                time.perf_counter() - svg_start,
+                len(svg_bytes),
+            )
+
+            file_payloads[
+                f"figures/{figure_name}.svg"
+            ] = svg_bytes
+
+            exported_figure_count += 1
+
+        except Exception as exc:
+            logger.exception(
+                "Could not export figure '%s' as SVG.",
+                figure_name,
+            )
+
+            notes.append(
+                f"Could not export figure "
+                f"'{figure_name}' as SVG: {exc}"
+            )
+
+    notes.append(
+        f"Exported {len(tables)} table(s)."
+    )
+
+    notes.append(
+        f"Exported {exported_figure_count} figure(s) as SVG."
+    )
+
+    # Log
+    log_text = _build_log_text()
+
+    file_payloads[
+        "logs/session_export.log"
+    ] = log_text.encode("utf-8")
+
+    # Write ZIP to disk
+    zip_start = time.perf_counter()
+
+    with zipfile.ZipFile(
+        zip_path,
+        mode="w",
+        compression=zipfile.ZIP_DEFLATED,
+    ) as archive:
+
         for relative_path, payload in file_payloads.items():
-            archive.writestr(relative_path, payload)
+            archive.writestr(
+                relative_path,
+                payload,
+                compress_type=zipfile.ZIP_DEFLATED,
+            )
 
-    zip_buffer.seek(0)
-    zip_name = f"viral_platform_optional_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
-    return zip_name, zip_buffer.getvalue(), notes
+    zip_size = zip_path.stat().st_size
+
+    logger.info(
+        "ZIP creation completed in %.2f seconds.",
+        time.perf_counter() - zip_start,
+    )
+
+    logger.info(
+        "ZIP size: %.2f MB.",
+        zip_size / (1024 * 1024),
+    )
+
+    logger.info(
+        "ZIP preparation completed in %.2f seconds.",
+        time.perf_counter() - start_time,
+    )
+
+    return zip_path, notes, temp_dir
+
+
+# Complete export workflow
+def create_export_bundle():
+    """
+    Create and save the complete SCJoseki export.
+
+    Workflow:
+
+    1. Create ZIP containing:
+       - metadata CSV
+       - tables
+       - SVG figures
+       - log
+
+    2. Prompt the user for a ZIP save location.
+
+    3. Copy the ZIP to that location.
+
+    4. Prompt the user for an H5AD save location.
+
+    5. Write the current AnnData directly to that location.
+
+    Returns
+    -------
+    dict
+        Export result information.
+    """
+    total_start = time.perf_counter()
+
+    adata = get_working_dataset()
+
+    if adata is None:
+        raise ValueError(
+            "No working dataset is loaded. "
+            "Upload data before exporting."
+        )
+
+    zip_path = None
+    temp_dir = None
+
+    try:
+        # Step 1: Create ZIP without H5AD
+        logger.info(
+            "Starting SCJoseki export."
+        )
+
+        zip_path, notes, temp_dir = (
+            _create_zip_without_h5ad(adata)
+        )
+
+        # Step 2: Ask user where to save ZIP
+        zip_filename = zip_path.name
+
+        selected_zip_path = _choose_save_path(
+            title="Save SCJoseki results ZIP",
+            initial_filename=zip_filename,
+            filetypes=[
+                (
+                    "SCJoseki ZIP archive",
+                    "*.zip",
+                ),
+                (
+                    "All files",
+                    "*.*",
+                ),
+            ],
+        )
+
+        if selected_zip_path is None:
+            return {
+                "status": "cancelled",
+                "message": (
+                    "Export cancelled before the ZIP "
+                    "was saved."
+                ),
+                "zip_path": None,
+                "h5ad_path": None,
+                "notes": notes,
+            }
+
+        # Step 3: Copy ZIP to selected location
+        logger.info(
+            "Saving ZIP to: %s",
+            selected_zip_path,
+        )
+
+        shutil.copyfile(
+            zip_path,
+            selected_zip_path,
+        )
+
+        logger.info(
+            "ZIP saved successfully."
+        )
+
+        # Step 4: Ask user where to save H5AD
+        selected_h5ad_path = _choose_save_path(
+            title="Save SCJoseki H5AD dataset",
+            initial_filename="session.h5ad",
+            filetypes=[
+                (
+                    "AnnData H5AD file",
+                    "*.h5ad",
+                ),
+                (
+                    "All files",
+                    "*.*",
+                ),
+            ],
+        )
+
+        if selected_h5ad_path is None:
+            return {
+                "status": "partial",
+                "message": (
+                    "The results ZIP was saved, "
+                    "but the H5AD save was cancelled."
+                ),
+                "zip_path": selected_zip_path,
+                "h5ad_path": None,
+                "notes": notes,
+            }
+
+        # Step 5: Write H5AD directly to selected location
+        logger.info(
+            "Saving H5AD to: %s",
+            selected_h5ad_path,
+        )
+
+        h5_start = time.perf_counter()
+
+        _write_h5ad_file(
+            adata,
+            selected_h5ad_path,
+        )
+
+        h5_size = selected_h5ad_path.stat().st_size
+
+        logger.info(
+            "H5AD saved successfully in %.2f seconds (%.2f MB).",
+            time.perf_counter() - h5_start,
+            h5_size / (1024 * 1024),
+        )
+
+        logger.info(
+            "Total export workflow completed in %.2f seconds.",
+            time.perf_counter() - total_start,
+        )
+
+        return {
+            "status": "success",
+            "message": (
+                "Export completed successfully."
+            ),
+            "zip_path": selected_zip_path,
+            "h5ad_path": selected_h5ad_path,
+            "notes": notes,
+        }
+
+    finally:
+        # The temporary ZIP is only needed until the user
+        # chooses its final destination.
+        if temp_dir is not None:
+            try:
+                shutil.rmtree(
+                    temp_dir,
+                    ignore_errors=True,
+                )
+            except Exception:
+                logger.exception(
+                    "Could not clean up temporary export directory."
+                )
