@@ -182,6 +182,20 @@ def _format_detected_grouped_list(set_to_genes, empty_message):
 	return " ".join(parts) if parts else empty_message
 
 
+def _normalize_automatic_detection_payload(detected, selected_virus):
+	"""Return a per-virus mapping regardless of finder return shape."""
+	if not isinstance(detected, dict):
+		return {}
+
+	# Single-virus payload: {"features": [...], "genes": [...], ...}
+	if "features" in detected and "genes" in detected:
+		virus_key = selected_virus or "Selected Virus"
+		return {virus_key: detected}
+
+	# All-virus payload: {"Virus A": {...}, "Virus B": {...}}
+	return detected
+
+
 def create_viral_gene_detection_results(pass_fail, color, gene_count_per_virus, detected_features, gene_entries, unique_count, not_found=None, detected_gene_sets=None):
 	"""Render full viral detection results UI with curation controls.
 
@@ -483,18 +497,24 @@ def register_vd_callbacks(app):
 
 		if selected_method == "automatic":
 			detected = find_viral_genes(selected_virus)
+			detected_by_virus = _normalize_automatic_detection_payload(detected, selected_virus)
 			gene_count_per_virus = {}
 			detected_gene_sets = {}
 			all_genes = []
 			detected_features = []
 			matched_features_by_gene = {}
-			for _, value in detected.items():
-				if value["features"] == [] and value["genes"] == []:
+			for virus_name, value in detected_by_virus.items():
+				if not isinstance(value, dict):
 					continue
-				gene_count_per_virus[_] = len(value["genes"])
-				detected_gene_sets[_] = sorted(set(value["genes"]))
-				all_genes.extend(value["genes"])
-				detected_features.extend(value["features"])
+
+				features = value.get("features", [])
+				genes = value.get("genes", [])
+				if features == [] and genes == []:
+					continue
+				gene_count_per_virus[virus_name] = len(genes)
+				detected_gene_sets[virus_name] = sorted(set(genes))
+				all_genes.extend(genes)
+				detected_features.extend(features)
 				for gene, features in value.get("matched_features_by_gene", {}).items():
 					matched_features_by_gene.setdefault(gene, set()).update(features)
 
