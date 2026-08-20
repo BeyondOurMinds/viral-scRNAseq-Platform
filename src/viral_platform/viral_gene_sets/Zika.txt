@@ -1,5 +1,4 @@
-C
-Capsid
+C,Capsid
 prM
 M
 E
@@ -9,5 +8,5 @@ NS2B
 NS3
 NS4A
 2K
-NS4B 
+NS4B
 NS5

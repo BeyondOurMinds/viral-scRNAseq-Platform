@@ -28,8 +28,6 @@ def preprocess_data(n_top_genes=2000, scale_max_value=10):
         sc.pp.scale(adata_pca, max_value=float(scale_max_value))
         set_pca_dataset(adata_pca)
 
-        # Keep scaled values accessible while PCA/clustering continue to use adata.X.
-        # adata.layers["scaled"] = adata_pca.X.copy()
 
         set_working_dataset(adata)
         run_pca()

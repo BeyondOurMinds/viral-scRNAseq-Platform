@@ -8,6 +8,5 @@ M
 M1
 M2
 NS
-NS1
-NS2
-NEP
+NS1,NS-1
+NS2,NEP

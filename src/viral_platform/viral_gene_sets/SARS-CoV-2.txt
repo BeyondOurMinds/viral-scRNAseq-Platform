@@ -1,10 +1,9 @@
 ORF1ab
 ORF1a
-S
-Spike
-E
-M
-N
+S,Spike
+E,Envelope
+M,Membrane
+N,Nucleocapsid
 ORF3a
 ORF3b
 ORF6

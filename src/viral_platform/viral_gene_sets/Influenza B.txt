@@ -5,7 +5,9 @@ HA
 NP
 NA
 M
+M1
 BM2
 NB
+NS
 NS1
-NEP
+NEP,NS2
