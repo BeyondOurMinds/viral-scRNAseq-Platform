@@ -45,10 +45,7 @@ def _read_downloaded_cellphonedb_filenames():
     )
 
 
-# ---------------------------------------------------------------------------
 # CellPhoneDB reference rendering helpers
-# ---------------------------------------------------------------------------
-
 CCC_REFERENCE_SUFFIXES = (
     "_cellphonedb.json",
     "_cellphonedb_top.json",
@@ -460,10 +457,7 @@ def create_network_plot(summary, show_labels=True):
         )
         return fig
 
-    # --------------------------------------------------
     # Build graph
-    # --------------------------------------------------
-
     G = nx.DiGraph()
 
     for _, row in summary.iterrows():
@@ -475,69 +469,45 @@ def create_network_plot(summary, show_labels=True):
             specificity=1 - row["mean_specificity"],
         )
 
-    # --------------------------------------------------
     # Layout
-    # --------------------------------------------------
-
     pos, ordered_nodes = _regular_polygon_layout(G.nodes())
 
-    # --------------------------------------------------
     # Node statistics
-    # --------------------------------------------------
-
     degree = dict(G.degree())
 
     weighted_degree = dict(G.degree(weight="interactions"))
 
-    # --------------------------------------------------
     # Normalise node sizes
-    # --------------------------------------------------
-
     min_node = 12
     max_node = 30
 
     dmin = min(degree.values())
     dmax = max(degree.values())
 
-    # --------------------------------------------------
     # Normalise edge widths
-    # --------------------------------------------------
-
     min_edge = 1
     max_edge = 8
 
     wmin = summary["interaction_count"].min()
     wmax = summary["interaction_count"].max()
 
-    # --------------------------------------------------
     # Figure
-    # --------------------------------------------------
-
     fig = go.Figure()
 
     colours = px.colors.sequential.Turbo
 
-    # -----------------------------------
     # Normalise edge colours
-    # -----------------------------------
-
     strength = 1 - summary["mean_magnitude"]
 
     smin = strength.min()
     smax = strength.max()
 
-    # --------------------------------------------------
     # Draw edges
-    # --------------------------------------------------
-
     for u, v, data in G.edges(data=True):
         x0, y0 = pos[u]
         x1, y1 = pos[v]
 
-        # -----------------------------------
         # Normalise colour across this dataset
-        # -----------------------------------
-
         if smax == smin:
             scaled = 0.5
 
@@ -558,10 +528,7 @@ def create_network_plot(summary, show_labels=True):
 
         colour = f"rgba({r},{g},{b},{alpha:.2f})"
 
-        # ------------------------------
         # Edge width
-        # ------------------------------
-
         if wmax == wmin:
             edge_width = (min_edge + max_edge) / 2
 
@@ -570,10 +537,7 @@ def create_network_plot(summary, show_labels=True):
                 max_edge - min_edge
             ) / (wmax - wmin)
 
-        # ------------------------------
         # Edge trace
-        # ------------------------------
-
         fig.add_trace(
             go.Scatter(
                 x=[x0, x1],
@@ -594,10 +558,7 @@ def create_network_plot(summary, show_labels=True):
             )
         )
 
-        # ------------------------------
         # Arrow
-        # ------------------------------
-
         fig.add_annotation(
             x=x1,
             y=y1,
@@ -615,10 +576,7 @@ def create_network_plot(summary, show_labels=True):
             text="",
         )
 
-    # --------------------------------------------------
     # Nodes
-    # --------------------------------------------------
-
     node_x = []
     node_y = []
 
@@ -635,10 +593,7 @@ def create_network_plot(summary, show_labels=True):
         node_x.append(x)
         node_y.append(y)
 
-        # ------------------------------
         # Node size
-        # ------------------------------
-
         if dmax == dmin:
             size = (min_node + max_node) / 2
 
@@ -650,10 +605,7 @@ def create_network_plot(summary, show_labels=True):
         node_size.append(size)
         node_sizes[node] = size
 
-        # ------------------------------
         # Colour
-        # ------------------------------
-
         node_colour.append(weighted_degree[node])
 
         node_text.append(
@@ -662,10 +614,7 @@ def create_network_plot(summary, show_labels=True):
             f"Total Interactions: {weighted_degree[node]}"
         )
 
-    # --------------------------------------------------
     # Draw nodes
-    # --------------------------------------------------
-
     fig.add_trace(
         go.Scatter(
             x=node_x,
@@ -691,10 +640,7 @@ def create_network_plot(summary, show_labels=True):
         )
     )
 
-    # --------------------------------------------------
     # Node Labels
-    # --------------------------------------------------
-
     if show_labels:
         for node in ordered_nodes:
             x, y = pos[node]
@@ -728,10 +674,7 @@ def create_network_plot(summary, show_labels=True):
                 textangle=rotation,
             )
 
-    # --------------------------------------------------
     # Dummy trace for edge colourbar
-    # --------------------------------------------------
-
     fig.add_trace(
         go.Scatter(
             x=[None],
@@ -765,10 +708,7 @@ def create_network_plot(summary, show_labels=True):
             showlegend=False,
         )
     )
-    # --------------------------------------------------
     # Layout
-    # --------------------------------------------------
-
     fig.update_layout(
         title="Cell-Cell Communication Network",
         template="plotly_white",

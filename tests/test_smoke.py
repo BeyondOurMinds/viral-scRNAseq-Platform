@@ -42,4 +42,18 @@ def test_prefixed_10x_discovery_accepts_counts_matrix(tmp_path, monkeypatch):
     assert adata.uns["sample_count"] == 1
     assert loaded_paths == [f"{sample_prefix}counts.mtx.gz"]
 
+
+def test_isg_payload_normalizer_handles_single_set_result():
+    from viral_platform.callbacks.isg_callbacks import _normalize_automatic_detection_payload
+
+    detected = {
+        "features": ["ENSG00000123456"],
+        "genes": ["ISG15"],
+        "matched_features_by_gene": {"ISG15": ["ENSG00000123456"]},
+    }
+
+    normalized = _normalize_automatic_detection_payload(detected, "Interferon")
+
+    assert normalized == {"Interferon": detected}
+
     # testing commit

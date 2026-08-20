@@ -11,27 +11,7 @@ print("Viral sets path:", VIRAL_SETS_PATH)
 print("Viral sets exists:", VIRAL_SETS_PATH.exists())
 
 
-# def normalize_gene_name(gene):
-#     """
-#     Normalise a dataset feature name while preserving case.
 
-#     Examples:
-#         B958___BLLF1              -> BLLF1
-#         LMP-2A(Exon_1)            -> LMP-2A
-#         BLLF1-splice_variant      -> BLLF1
-#     """
-
-#     # Remove dataset prefixes
-#     if "___" in gene:
-#         gene = gene.split("___")[-1]
-
-#     # Remove transcript annotations
-#     gene = re.sub(r"\(.*?\)", "", gene)
-
-#     # Remove common suffixes
-#     gene = re.sub(r"-splice_variant$", "", gene)
-
-#     return gene.strip()
 
 def normalize_gene_name(gene, viral_names=None):
     """

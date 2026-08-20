@@ -107,8 +107,7 @@ def run_differential_expression(
         )
         return "Invalid contrast after filtering.", ""
 
-    # Here you would implement the actual DE analysis logic
-    # For now, we just return a placeholder message
+    
     logger.info("Differential expression analysis completed successfully.")
     return adata, results
 

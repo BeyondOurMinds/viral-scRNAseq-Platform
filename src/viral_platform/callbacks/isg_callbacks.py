@@ -234,6 +234,18 @@ def _format_detected_grouped_list(set_to_genes, empty_message):
 	return " ".join(parts) if parts else empty_message
 
 
+def _normalize_automatic_detection_payload(detected, selected_set):
+	"""Return a per-set mapping regardless of the finder return shape."""
+	if not isinstance(detected, dict):
+		return {}
+
+	if "features" in detected and "genes" in detected:
+		set_key = selected_set or "Selected ISG Set"
+		return {set_key: detected}
+
+	return detected
+
+
 def create_isg_detection_results(
 	pass_fail,
 	color,
@@ -609,7 +621,8 @@ def register_isg_callbacks(app):
 			return no_update, no_update
 
 		if selected_method == "automatic":
-			detected_genes = find_isg_genes(selected_set)
+			detected = find_isg_genes(selected_set)
+			detected_by_set = _normalize_automatic_detection_payload(detected, selected_set)
 			gene_count_per_set = {}
 			total_genes_per_set = {}
 			detected_gene_sets = {}
@@ -617,13 +630,17 @@ def register_isg_callbacks(app):
 			detected_features = []
 			core_to_features = {}
 
-			for key, value in detected_genes.items():
-				if value["features"] == [] and value["genes"] == []:
+			for key, value in detected_by_set.items():
+				if not isinstance(value, dict):
 					continue
-				gene_count_per_set[key] = len(value["genes"])
-				detected_gene_sets[key] = sorted(set(value["genes"]))
-				all_genes.extend(value["genes"])
-				detected_features.extend(value["features"])
+				features = value.get("features", [])
+				genes = value.get("genes", [])
+				if features == [] and genes == []:
+					continue
+				gene_count_per_set[key] = len(genes)
+				detected_gene_sets[key] = sorted(set(genes))
+				all_genes.extend(genes)
+				detected_features.extend(features)
 				for core_gene, features in value.get("matched_features_by_gene", {}).items():
 					core_to_features.setdefault(core_gene, set()).update(features)
 

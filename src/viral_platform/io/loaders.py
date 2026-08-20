@@ -14,9 +14,7 @@ from viral_platform.analysis.find_raw_counts import find_raw_count_matrix, get_r
 
 logger = logging.getLogger(__name__)
 
-# ────────────────────────────────────────────────────────────────────────────────────
-# ────── 10x zip loading ─────────────────────────────────────────────────────────────
-# ────────────────────────────────────────────────────────────────────────────────────
+# 10x zip loading
 
 # Matches GEO-style prefixed count matrices, capturing any prefix before the 10x matrix suffix.
 PREFIXED_MATRIX_FILENAME_PATTERN = re.compile(
@@ -45,11 +43,11 @@ def _write_var_names_to_assets(adata, filename="adata_var_names.txt"):
     return output_path
 
 
-# ── Shared post-processing ────────────────────────────────────────────────────
+# Shared post-processing 
 
 def _postprocess_loaded_adata(adata, sample_count=None):
     """
-    High-level helper for ass successful loads.
+    High-level helper for successful loads.
     Input: An AnnData object and an optional sample count
     Output: The same AnnData Object after dataset-store updates and QC metric initialization.
     Interacts with set_dataset, set_working_dataset, and Scanpy QC metric calculation
@@ -76,81 +74,12 @@ def _postprocess_loaded_adata(adata, sample_count=None):
     sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
     set_working_dataset(adata)
 
-    # Temporary
-    # print(adata.obs.columns)
-    '''import numpy as np
-
-    X = adata.raw.X
-
-    if hasattr(X, "data"):  # sparse matrix
-        values = X.data
-    else:
-        values = X.ravel()
-
-    print("Min:", values.min())
-    print("Max:", values.max())
-    print("Non-integer values:", np.sum(values != np.floor(values)))'''
-
-    # _write_var_names_to_assets(adata)
-
-    # print("var columns:", adata.var.columns)
-
-    # print("Adata object:", adata)
-    # viral_genes = [
-    #     "BZLF1", "BRLF1", "BMRF1",
-    #     "LMP-1", "LMP-2A", "LMP-2B",
-    #     "BNLF2a", "BNLF2b"
-    # ]
-
-    # for gene in viral_genes:
-    #     print(gene, gene in adata.var_names)
-    
-    # for gene in viral_genes:
-    #     if gene in adata.var_names:
-    #         counts = adata[:, gene].X
-
-    #         if hasattr(counts, "toarray"):
-    #             counts = counts.toarray()
-
-    #         print(
-    #             gene,
-    #             "total counts =", counts.sum(),
-    #             "cells expressing =", (counts > 0).sum()
-    #         )
-
-    # viral_prefixes = (
-    #     "EBNA", "EBER", "LMP",
-    #     "BZ", "BR", "BL", "BM", "BN",
-    #     "BO", "BP", "BQ", "BX", "BV", "BW",
-    #     "Ba", "Bb", "Bc", "Bd"
-    # )
-
-    # viral_genes = [
-    #     g for g in adata.var_names
-    #     if g.startswith(viral_prefixes)
-    # ]
-
-    # print(len(viral_genes))
-    # print(sorted(viral_genes))
-
-    # for gene in adata.var_names:
-    #     if gene.startswith(viral_prefixes):
-    #         counts = adata[:, gene].X
-    #         if hasattr(counts, "toarray"):
-    #             counts = counts.toarray()
-
-    #         if counts.sum() > 0:
-    #             print(gene, counts.sum(), (counts > 0).sum())
-    # print("adata obs names:", adata.obs_names[:5])
-
-    # end temporary
     discover_metadata(adata)
-    #history = get_state_store()
-    #print("Metadata info after discovery:", history.get("metadata_info", {}))
+    
     return adata
 
 
-# ── Zip extraction ────────────────────────────────────────────────────────────
+# Zip extraction 
 
 def _safe_extract_zip(zip_path, destination_dir):
     """
@@ -171,7 +100,7 @@ def _safe_extract_zip(zip_path, destination_dir):
         zf.extractall(destination_root)
 
 
-# ── 10x helper utilities ──────────────────────────────────────────────────────
+# 10x helper utilities
 
 def _extract_prefix(filename):
     """Return the sample prefix from a prefixed *matrix/counts.mtx(.gz) filename, or None."""
@@ -185,7 +114,7 @@ def _find_matching_file(directory, candidates):
     return next((p for name in candidates if (p := base / name).exists()), None)
 
 
-# ── Per-sample prefixed 10x loading ──────────────────────────────────────────
+# Per-sample prefixed 10x loading
 
 def _load_prefixed_10x_sample(matrix_path):
     """Load one GEO-style prefixed 10x sample (any *matrix/counts.mtx[.gz]) into AnnData."""
@@ -272,7 +201,7 @@ def _load_prefixed_10x_samples(root_dir):
     return combined
 
 
-# ── Standard (unprefixed) 10x directory discovery ────────────────────────────
+# Standard (unprefixed) 10x directory discovery
 
 def _find_10x_directory(root_dir):
     """Walk *root_dir* and return the shallowest directory that contains all
@@ -291,12 +220,10 @@ def _find_10x_directory(root_dir):
     # Prefer the shallowest match to avoid accidentally picking up nested artefacts.
     return min(candidates, key=lambda p: len(p.relative_to(root_path).parts))
 
-# ──────────────────────────────────────────────────────────────────────────────────
-# ──── End of 10x zip loading code ─────────────────────────────────────────────────
-# ──────────────────────────────────────────────────────────────────────────────────
+# End of 10x zip loading code
 
 
-# ── Top-level format loaders ──────────────────────────────────────────────────
+# Top-level format loaders
 
 def _load_h5ad(path):
     """Read an h5ad file and run shared post-processing."""
@@ -343,7 +270,7 @@ LOADER_BY_EXTENSION = {
 }
 
 
-# ── Public entry point ────────────────────────────────────────────────────────
+# Public entry point
 
 def load_file_from_path(file_path):
     """Normalise *file_path*, select the correct loader by extension, and return
