@@ -108,6 +108,20 @@ def _coerce_de_results_by_celltype(raw_results):
 
     return normalized
 
+
+def _coerce_gene_list(raw_genes):
+    """Normalize gene payloads into a clean list of non-empty strings."""
+    if raw_genes is None:
+        return []
+
+    if isinstance(raw_genes, str):
+        return [gene.strip() for gene in raw_genes.split(",") if gene.strip()]
+
+    if isinstance(raw_genes, (list, tuple, set)):
+        return [str(gene).strip() for gene in raw_genes if str(gene).strip()]
+
+    return [str(raw_genes).strip()] if str(raw_genes).strip() else []
+
 def register_host_virus_interaction_callbacks(app):
     @app.callback(
         Output("host-virus-advanced-options-collapse", "is_open"),
@@ -392,10 +406,11 @@ def register_host_virus_interaction_callbacks(app):
             
         elif gene_source == "isg":
             # Load ISG genes from the state
-            gene_list =[]
             state = get_state_store()
             genes = state.get("isg_detection", {}).get("isg_genes", [])
-            gene_list = [gene.strip() for gene in genes.split(",") if gene.strip()]
+            gene_list = _coerce_gene_list(genes)
+            if not gene_list:
+                return "done", "No ISG genes found. Run ISG analysis first.", []
             print(f"ISG genes: {gene_list}")
             raw_matches, summary = run_intact_interpretation(
                 intact_virus,
@@ -404,7 +419,11 @@ def register_host_virus_interaction_callbacks(app):
         elif gene_source == "hvi":
             # Load significant host genes from the state
             state = get_state_store()
-            genes = state.get("host-virus-interaction", {}).get("sig_host_genes", [])
+            genes = _coerce_gene_list(
+                state.get("host-virus-interaction", {}).get("sig_host_genes", [])
+            )
+            if not genes:
+                return "done", "No significant host genes found. Run host-virus interaction analysis first.", []
             print(f"Significant host genes: {genes}")
             raw_matches, summary = run_intact_interpretation(
                 intact_virus,
@@ -413,7 +432,9 @@ def register_host_virus_interaction_callbacks(app):
         elif gene_source == "custom":
             if not custom_gene_list:
                 return "done", "No custom gene list provided.", []
-            genes = [gene.strip() for gene in custom_gene_list.split(",") if gene.strip()]
+            genes = _coerce_gene_list(custom_gene_list)
+            if not genes:
+                return "done", "No valid custom genes were provided.", []
             raw_matches, summary = run_intact_interpretation(
                 intact_virus,
                 genes,
