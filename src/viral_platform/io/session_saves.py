@@ -707,8 +707,7 @@ def create_export_bundle():
         }
 
     finally:
-        # The temporary ZIP is only needed until the user
-        # chooses its final destination.
+        # The temporary ZIP is only needed until the user chooses its final destination.
         if temp_dir is not None:
             try:
                 shutil.rmtree(

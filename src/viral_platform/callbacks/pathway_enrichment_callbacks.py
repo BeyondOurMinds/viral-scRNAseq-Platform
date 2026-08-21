@@ -365,5 +365,4 @@ def register_pathway_enrichment_callbacks(app):
             "pathway-enrichment-bar-plot-container": barplot_graph
         })
 
-        # Return a placeholder for displaying results (to be implemented)
         return "done", table, dotplot_graph, barplot_graph

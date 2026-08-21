@@ -184,26 +184,5 @@ def summarise_filtered_celltype_interactions(results):
     summary["bubble_color"] = 1 - summary["mean_specificity"]  # Invert specificity for bubble color
     return summary
 
-# Temp ----------------------------------------------------------------------------------------------
-# from viral_platform.io.loaders import _load_h5ad
-# from viral_platform.utils.var_names import ensure_gene_symbols
-
-# adata = _load_h5ad(r"C:\Users\jtspy\OneDrive\Desktop\Bioinformatics\ViralDatasets\temp_small_dataset.h5ad")
-# print("adata var columns:", adata.var.columns.tolist())
-# adata = ensure_gene_symbols(adata)
-
-
-# liana_results = run_liana(adata, group_by="cell_type")
-# liana_results_filtered = filter_liana_results(liana_results)
-# print("LIANA results columns:", liana_results_filtered.columns.tolist())
-
-# print(adata.var_names[:20].tolist())
-
-# print()
-
-# print(adata.var.head())
-
-
-
 
 
