@@ -54,14 +54,14 @@ def register_preprocessing_callbacks(app):
             adata = get_working_dataset()
             if adata is None:
                 logger.warning("Preprocessing completed but no dataset found in state store.")
-                return "Preprocessing completed, but no dataset found.", no_update
+                return no_update, "Preprocessing completed, but no dataset found."
             logger.info("Preprocessing completed successfully.")
             result = create_elbow_plot(adata)
             cache_results(**{"preprocess-temp-container": result})
-            return "Preprocessing completed successfully.", result
+            return no_update, result
         except Exception as exc:
             logger.exception("Preprocessing failed: %s", str(exc))
-            return f"Preprocessing failed: {str(exc)}", no_update
+            return no_update, f"Preprocessing failed: {str(exc)}"
         
     @app.callback(
         Output("elbow-plot", "figure"),
@@ -110,4 +110,4 @@ def register_preprocessing_callbacks(app):
             return f"PCA selection applied with {n_pcs} PCs.", graph
         except Exception as exc:
             logger.exception("Failed to apply PCA selection: %s", str(exc))
-            return f"Failed to apply PCA selection: {str(exc)}", no_update
+            return no_update, f"Failed to apply PCA selection: {str(exc)}"

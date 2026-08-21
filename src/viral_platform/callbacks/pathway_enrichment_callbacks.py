@@ -315,7 +315,7 @@ def register_pathway_enrichment_callbacks(app):
         # Check if DE results for the selected cell type are available
         if celltype not in de_results_by_celltype:
             logger.warning(f"No DE results available for cell type: {celltype}")
-            return no_update, no_update, no_update, no_update
+            return no_update, f"No DE results available for cell type: {celltype}", f"No DE results available for cell type: {celltype}", f"No DE results available for cell type: {celltype}"
         
         # Get the DE results for the selected cell type
         de_results = de_results_by_celltype[celltype]
@@ -330,13 +330,13 @@ def register_pathway_enrichment_callbacks(app):
         )
         if enrichment_payload is None:
             logger.warning("Pathway enrichment analysis returned no results.")
-            return no_update, "No pathway enrichment results found.", no_update, no_update
+            return no_update, "No pathway enrichment results found.", "No pathway enrichment results", "No pathway enrichment results"
 
         enrichment_results, enr = enrichment_payload
         
         if enrichment_results is None or enrichment_results.empty:
             logger.warning("Pathway enrichment analysis returned no results.")
-            return no_update, "No pathway enrichment results found.", no_update, no_update
+            return no_update, "No pathway enrichment results found.", "No pathway enrichment results", "No pathway enrichment results"
 
         
         # Cache the results for future use

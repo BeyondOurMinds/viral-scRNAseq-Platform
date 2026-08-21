@@ -22,17 +22,17 @@ def register_cell_annotation_callbacks(app):
             adata = get_working_dataset()
             if adata is None:
                 logger.warning("Cell annotation requested without an active dataset.")
-                return "No dataset available. Upload and preprocess data first.", no_update
+                return no_update, "No dataset available. Upload and preprocess data first."
             if "log_normalized" not in adata.layers:
                 logger.warning("Cell annotation requested before preprocessing generated log_normalized layer.")
-                return "Run preprocessing before cell annotation.", no_update
+                return no_update, "Run preprocessing before cell annotation."
 
             adata_ct = adata.copy()  # Create a copy of the AnnData object for cell annotation
             adata_ct.X = adata.layers["log_normalized"].copy()  # Use log-normalized expression for cell annotation
             adata_ct = annotate_cells(adata_ct)
             if adata_ct is None:
                 logger.warning("Cell annotation completed but no dataset found in state store.")
-                return "Cell annotation completed, but no dataset found.", no_update
+                return no_update, "Cell annotation completed, but no dataset found."
 
             # Persist annotation columns back to the canonical working AnnData.
             annotation_cols = [
@@ -49,7 +49,7 @@ def register_cell_annotation_callbacks(app):
             fig = celltypist_umap(adata_ct)
             graph = dcc.Graph(figure=fig)
             cache_results(**{"cell-annotation-results-container": graph})
-            return "Cell annotation completed successfully.", graph
+            return no_update, graph
         except Exception as exc:
             logger.exception("Cell annotation failed: %s", str(exc))
-            return f"Cell annotation failed: {str(exc)}", no_update
+            return no_update, f"Cell annotation failed: {str(exc)}"
