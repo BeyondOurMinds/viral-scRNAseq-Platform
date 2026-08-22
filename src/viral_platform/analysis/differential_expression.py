@@ -43,9 +43,11 @@ def run_differential_expression(
     - A message indicating the result of the DE analysis or any issues encountered.
     """
     if not find_biological_replicates(adata, grouping):
+        logger.warning("Insufficient biological replicates for differential expression analysis.")
         return "Insufficient biological replicates for differential expression analysis.", ""
     adata = create_pseudobulk(adata, grouping=grouping)
     if adata is None:
+        logger.warning("Failed to create pseudobulk dataset for differential expression analysis.")
         return "Failed to create pseudobulk dataset for differential expression analysis.", ""
 
     # Remove tiny pseudobulk profiles that are mostly zeros and can stall DE fitting.
@@ -66,6 +68,10 @@ def run_differential_expression(
             )
 
     if adata.n_obs < 4:
+        logger.warning(
+            "Too few pseudobulk samples (%s) after filtering; relax thresholds for DE analysis.",
+            adata.n_obs,
+        )
         return "Too few pseudobulk samples after filtering; relax thresholds.", ""
 
     "DE analysis logic for the selected cell type here"
