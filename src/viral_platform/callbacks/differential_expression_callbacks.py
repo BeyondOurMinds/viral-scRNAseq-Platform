@@ -146,9 +146,11 @@ def _build_volcano_component(results_df, title, graph_id=None):
     if volcano_df.empty:
         return html.Div(f"Volcano plot for {title} is not available.")
 
-    # Compute -log10(padj) for non-zero rows, then cap zero-padj rows at 5%
-    # above the highest non-zero value instead of using an arbitrary floor.
-    # This avoids a flat line of points floating at y=300.
+    """
+    Compute -log10(padj) for non-zero rows, then cap zero-padj rows at 5% 
+    above the highest non-zero value instead of using an arbitrary floor.
+    This avoids a flat line of points floating at y=300 
+    """
     nonzero_mask = volcano_df["padj"] > 0
     volcano_df.loc[nonzero_mask, "neg_log10_padj"] = -np.log10(
         volcano_df.loc[nonzero_mask, "padj"]
@@ -1016,19 +1018,19 @@ def register_differential_expression_callbacks(app):
         if adata_for_values is None:
             return (
                 "Upload a dataset to run differential expression analysis.",
-                "",
-                "",
-                "",
-                "",
+                "Upload a dataset to run differential expression analysis.",
+                "Upload a dataset to run differential expression analysis.",
+                "Upload a dataset to run differential expression analysis.",
+                "Upload a dataset to run differential expression analysis.",
             )
 
         if not celltype_column or celltype_column not in adata_for_values.obs.columns:
             return (
                 "Select a valid cell type column before running differential expression.",
-                "",
-                "",
-                "",
-                "",
+                "Select a valid cell type column before running differential expression.",
+                "Select a valid cell type column before running differential expression.",
+                "Select a valid cell type column before running differential expression.",
+                "Select a valid cell type column before running differential expression.",
             )
 
         # Build the analysis target list: a single selected cell type, or every
@@ -1049,10 +1051,10 @@ def register_differential_expression_callbacks(app):
         if not target_celltypes:
             return (
                 "No cell types available for differential expression analysis.",
-                "",
-                "",
-                "",
-                "",
+                "No cell types available for differential expression analysis.",
+                "No cell types available for differential expression analysis.",
+                "No cell types available for differential expression analysis.",
+                "No cell types available for differential expression analysis.",
             )
 
         # Keep unique order in case metadata_info has duplicates.
@@ -1267,7 +1269,7 @@ def register_differential_expression_callbacks(app):
             )
 
         if completed == 0:
-            return "No valid cell type analyses could be completed.", "", "", "", ""
+            return "No valid cell type analyses could be completed.", "No valid cell type analyses could be completed.", "No valid cell type analyses could be completed.", "No valid cell type analyses could be completed.", "No valid cell type analyses could be completed."
 
         logger.info(
             "Running differential expression analysis for grouping '%s', comparing '%s' vs '%s', filtered by cell type '%s'.",
