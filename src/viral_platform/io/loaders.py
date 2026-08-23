@@ -225,9 +225,29 @@ def _find_10x_directory(root_dir):
 
 # Top-level format loaders
 
+_ENSEMBL_PATTERN = re.compile(r"^ENS[A-Z]*G\d+", re.IGNORECASE)
+_SYMBOL_COLUMNS = ("gene_symbols", "gene_symbol", "gene_name", "SYMBOL")
+
+def _maybe_promote_gene_symbols(adata):
+    """If var_names appear to be Ensembl IDs, promote a known symbol column to var_names."""
+    sample = adata.var_names[:20]
+    if not any(_ENSEMBL_PATTERN.match(v) for v in sample):
+        return adata
+    for col in _SYMBOL_COLUMNS:
+        if col in adata.var.columns:
+            logger.info("Promoting adata.var['%s'] to var_names in place of Ensembl IDs.", col)
+            adata.var_names = adata.var[col].astype(str).values
+            adata.var_names_make_unique()
+            return adata
+    logger.info("var_names look like Ensembl IDs but no symbol column found; keeping as-is.")
+    return adata
+
+
 def _load_h5ad(path):
     """Read an h5ad file and run shared post-processing."""
-    return _postprocess_loaded_adata(sc.read_h5ad(path), sample_count=1)
+    adata = sc.read_h5ad(path)
+    _maybe_promote_gene_symbols(adata)
+    return _postprocess_loaded_adata(adata, sample_count=1)
 
 
 
