@@ -54,10 +54,22 @@ def _walk_cached_nodes(node):
             figure_payload = props.get("figure")
 
             if isinstance(figure_payload, go.Figure):
-                yield ("figure", figure_payload)
+                yield (
+                    "figure",
+                    {
+                        "figure": figure_payload,
+                        "component_id": props.get("id"),
+                    },
+                )
 
             elif isinstance(figure_payload, dict):
-                yield ("figure", figure_payload)
+                yield (
+                    "figure",
+                    {
+                        "figure": figure_payload,
+                        "component_id": props.get("id"),
+                    },
+                )
 
             # Dash DataTable
             table_columns = props.get("columns")
@@ -72,6 +84,7 @@ def _walk_cached_nodes(node):
                     {
                         "columns": table_columns,
                         "data": table_data,
+                        "component_id": props.get("id"),
                     },
                 )
 
@@ -115,6 +128,29 @@ def _safe_component_name(text, fallback):
     return cleaned or fallback
 
 
+def _cache_key_export_prefix(cache_key, item_type):
+    """Map cache keys to readable export filename prefixes."""
+    explicit = {
+        "de-table-container": "de_table",
+        "volcano-plot-container": "volcano_plot",
+        "de-heatmap-container": "de_heatmap",
+    }
+    prefix = explicit.get(cache_key)
+    if prefix:
+        return prefix
+    default_prefix = _safe_component_name(cache_key, item_type)
+    return default_prefix.replace("-", "_")
+
+
+def _extract_celltype_label(component_id):
+    """Extract a usable cell-type label from a Dash component id if available."""
+    if isinstance(component_id, dict):
+        celltype = component_id.get("celltype")
+        if celltype is not None and str(celltype).strip():
+            return _safe_component_name(str(celltype), "celltype")
+    return None
+
+
 def _extract_tables_and_figures(results_cache):
     """Extract tables and Plotly figures from cached Dash components."""
     tables = []
@@ -123,6 +159,8 @@ def _extract_tables_and_figures(results_cache):
     for cache_key, component in (results_cache or {}).items():
         table_index = 1
         figure_index = 1
+        used_table_names = set()
+        used_figure_names = set()
 
         for item_type, payload in _walk_cached_nodes(component):
 
@@ -133,14 +171,18 @@ def _extract_tables_and_figures(results_cache):
                 if not isinstance(data, list):
                     continue
 
-                table_name = _safe_component_name(
-                    cache_key,
-                    "table",
+                base_name = _cache_key_export_prefix(cache_key, "table")
+                celltype_label = _extract_celltype_label(
+                    payload.get("component_id")
                 )
+                if celltype_label:
+                    table_id = f"{base_name}_{celltype_label}"
+                else:
+                    table_id = f"{base_name}_table_{table_index}"
 
-                table_id = (
-                    f"{table_name}_table_{table_index}"
-                )
+                if table_id in used_table_names:
+                    table_id = f"{table_id}_{table_index}"
+                used_table_names.add(table_id)
 
                 table_index += 1
 
@@ -172,21 +214,25 @@ def _extract_tables_and_figures(results_cache):
                 )
 
             elif item_type == "figure":
-                figure_name = _safe_component_name(
-                    cache_key,
-                    "figure",
-                )
+                base_name = _cache_key_export_prefix(cache_key, "figure")
+                component_id = payload.get("component_id") if isinstance(payload, dict) else None
+                figure_payload = payload.get("figure") if isinstance(payload, dict) else payload
+                celltype_label = _extract_celltype_label(component_id)
+                if celltype_label:
+                    figure_id = f"{base_name}_{celltype_label}"
+                else:
+                    figure_id = f"{base_name}_figure_{figure_index}"
 
-                figure_id = (
-                    f"{figure_name}_figure_{figure_index}"
-                )
+                if figure_id in used_figure_names:
+                    figure_id = f"{figure_id}_{figure_index}"
+                used_figure_names.add(figure_id)
 
                 figure_index += 1
 
                 figures.append(
                     (
                         figure_id,
-                        payload,
+                        figure_payload,
                     )
                 )
 

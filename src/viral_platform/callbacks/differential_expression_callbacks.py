@@ -130,7 +130,7 @@ def _deduplicate_comparison_directions(df):
     return df[mask].copy()
 
 
-def _build_volcano_component(results_df, title):
+def _build_volcano_component(results_df, title, graph_id=None):
     volcano_df = _normalize_de_result_gene_column(results_df.copy(), title)
     volcano_df = _normalize_reference_de_columns(volcano_df)
     # Remove mirror comparison directions before plotting.
@@ -190,10 +190,16 @@ def _build_volcano_component(results_df, title):
         hover_data=hover_fields,
     )
     fig.update_layout(template="plotly_white", legend_title_text="", yaxis_title="-log10(padj)")
-    return dcc.Graph(figure=fig)
+    return dcc.Graph(id=graph_id, figure=fig)
 
 
-def _build_top_genes_heatmap_from_results(adata, results_df, grouping, celltype_label):
+def _build_top_genes_heatmap_from_results(
+    adata,
+    results_df,
+    grouping,
+    celltype_label,
+    graph_id=None,
+):
     heatmap_df = _normalize_de_result_gene_column(results_df.copy(), celltype_label)
     heatmap_df = _normalize_reference_de_columns(heatmap_df)
 
@@ -291,10 +297,10 @@ def _build_top_genes_heatmap_from_results(adata, results_df, grouping, celltype_
             "Z-score: %{z:.2f}<extra></extra>"
         )
     )
-    return dcc.Graph(figure=heatmap_fig)
+    return dcc.Graph(id=graph_id, figure=heatmap_fig)
 
 
-def _build_cross_population_heatmap(gene_heatmap_df, title):
+def _build_cross_population_heatmap(gene_heatmap_df, title, graph_id=None):
     if gene_heatmap_df is None or gene_heatmap_df.empty:
         return html.Div("Cross-cell-population heatmap is not available.")
 
@@ -380,7 +386,7 @@ def _build_cross_population_heatmap(gene_heatmap_df, title):
         tickmode="linear",
         dtick=1,
     )
-    return dcc.Graph(figure=fig)
+    return dcc.Graph(id=graph_id, figure=fig)
 
 
 def _infer_reference_prefix(filename):
@@ -449,6 +455,7 @@ def _build_cross_population_heatmap_from_runtime_de(
     de_results_by_celltype,
     adata,
     celltype_column,
+    graph_id=None,
 ):
     if not de_results_by_celltype:
         return html.Div("Cross-cell-population heatmap is not available.")
@@ -526,7 +533,7 @@ def _build_cross_population_heatmap_from_runtime_de(
         title="Heatmap of top genes across cell populations",
     )
     fig.update_layout(template="plotly_white", xaxis_tickangle=45)
-    return dcc.Graph(figure=fig)
+    return dcc.Graph(id=graph_id, figure=fig)
 
 
 def register_differential_expression_callbacks(app):
@@ -656,6 +663,7 @@ def register_differential_expression_callbacks(app):
         cross_population_heatmap = _build_cross_population_heatmap(
             gene_heatmap_df,
             "Heatmap of top genes across cell populations",
+            graph_id={"type": "de-reference-cross-population-heatmap"},
         )
 
         heatmap_output = dbc.Accordion(
@@ -1210,6 +1218,7 @@ def register_differential_expression_callbacks(app):
                 volcano_content = _build_volcano_component(
                     results.reset_index().copy(),
                     ct,
+                    graph_id={"type": "de-volcano-plot", "celltype": str(ct)},
                 )
 
             volcano_items.append(
@@ -1228,6 +1237,7 @@ def register_differential_expression_callbacks(app):
                     results.reset_index().copy(),
                     grouping,
                     ct,
+                    graph_id={"type": "de-heatmap-plot", "celltype": str(ct)},
                 )
 
             heatmap_items.append(
@@ -1243,6 +1253,10 @@ def register_differential_expression_callbacks(app):
                 de_results_by_celltype,
                 adata_for_values,
                 celltype_column,
+                graph_id={
+                    "type": "de-cross-population-heatmap",
+                    "celltype": "All_Cells",
+                },
             )
             heatmap_items.append(
                 dbc.AccordionItem(
