@@ -328,6 +328,12 @@ def _build_cross_population_heatmap(gene_heatmap_df, title, graph_id=None):
     else:
         gene_order = pd.unique(cross_df["gene_name"].astype(str)).tolist()
 
+    """
+    Keep the cross-population heatmap consistent with the runtime DE heatmap
+    and prevent unusually large gene lists from exploding the plot.
+    """
+    gene_order = gene_order[:20]
+
     if "cluster_order" in cross_df.columns:
         cross_df["cluster_order"] = pd.to_numeric(
             cross_df["cluster_order"], errors="coerce"
@@ -374,7 +380,7 @@ def _build_cross_population_heatmap(gene_heatmap_df, title, graph_id=None):
             "color": "Expression",
         },
         title=(
-            "Heatmap of Top Genes across Cell Populations"
+            "Heatmap of Top 20 Genes across Cell Populations"
             "<br><sup>Values represent averaged log10(CP10K + 1) normalized expression</sup>"
         ),
     )
