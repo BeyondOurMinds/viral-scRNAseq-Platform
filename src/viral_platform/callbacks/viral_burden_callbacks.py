@@ -579,14 +579,29 @@ def register_viral_burden_callbacks(app):
             logger.info("Significant viral burden associations identified successfully.")
             full_table = make_sortable_table(associations_df, "viral-burden-associations-table")
             significant_table = make_sortable_table(significant_associations_df, "viral-burden-significant-associations-table")
+
+            full_table_section = html.Div(
+                [
+                    html.H5("Full Associations Table", style={"marginBottom": "8px"}),
+                    full_table,
+                ],
+                style={"marginBottom": "20px"},
+            )
+            significant_table_section = html.Div(
+                [
+                    html.H5("Significant Associations Table", style={"marginBottom": "8px"}),
+                    significant_table,
+                ]
+            )
+
             cache_results(**{
-                "viral-burden-associations-results-container": full_table,
-                "viral-burden-associations-significant-results-container": significant_table,
+                "viral-burden-associations-results-container": full_table_section,
+                "viral-burden-associations-significant-results-container": significant_table_section,
             })
             return (
                 "done",
-                full_table,
-                significant_table,
+                full_table_section,
+                significant_table_section,
             )
         except Exception as e:
             logger.exception("Failed to calculate viral burden associations: %s", str(e))
