@@ -11,6 +11,30 @@ from viral_platform.io.loaders import load_file_from_path
 logger = logging.getLogger(__name__)
 
 
+def _cleanup_uploaded_cache_file(file_path):
+    """Remove a processed upload file and empty cache folders left behind."""
+    path = Path(file_path)
+    root = Path(UPLOAD_FOLDER).resolve()
+
+    try:
+        if path.exists() and path.is_file():
+            path.unlink()
+            logger.info("Removed processed upload cache file: %s", path)
+    except OSError as exc:
+        logger.warning("Could not remove upload cache file %s: %s", path, exc)
+        return
+
+    # Remove now-empty parent directories until we reach the upload cache root.
+    current = path.parent
+    while current != root:
+        try:
+            current.rmdir()
+            logger.info("Removed empty upload cache directory: %s", current)
+        except OSError:
+            break
+        current = current.parent
+
+
 def register_upload_callbacks(app):
     @app.callback(
         Output("output-data-upload", "children"),
@@ -52,6 +76,8 @@ def register_upload_callbacks(app):
                 ]),
                 no_update,
             )
+
+        _cleanup_uploaded_cache_file(file_path)
 
         logger.info(
             "Successfully processed uploaded file %s (%s cells, %s genes).",
