@@ -1,0 +1,9 @@
+gag,Gag,Pr55Gag
+pol,Pol
+env,Env,gp160
+tat,Tat
+rev,Rev
+nef,Nef
+vif,Vif
+vpr,Vpr
+vpu,Vpu

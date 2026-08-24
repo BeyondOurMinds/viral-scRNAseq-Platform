@@ -1,0 +1,12 @@
+C,Capsid
+prM
+M
+E
+NS1
+NS2A
+NS2B
+NS3
+NS4A
+2K
+NS4B
+NS5

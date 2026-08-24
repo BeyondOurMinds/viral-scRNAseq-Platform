@@ -1,0 +1,198 @@
+from viral_platform.state.dataset_store import (
+    get_dataset,
+    get_state_store,
+    get_working_dataset,
+)
+import logging
+import decoupler as dc
+from anndata import AnnData
+from viral_platform.utils.sample_column_utils import resolve_sample_column
+
+logger = logging.getLogger(__name__)
+
+
+def subset_cells(grouping, group1, group2, celltype="All Cells", celltype_column="cell_type"):
+    """
+    Subset the working dataset based on the selected grouping variable, groups, and cell type.
+    
+    Parameters:
+    - grouping: The metadata column to group by.
+    - group1: The first group to include in the subset.
+    - group2: The second group to include in the subset.
+    - celltype: The cell type to filter by (if provided).
+    
+    Returns:
+    - A new AnnData object containing only the cells that match the specified criteria.
+    """
+    # Prefer the working dataset because downstream analyses depend on
+    # derived obs columns (for example CellTypist majority labels).
+    adata = get_working_dataset() or get_dataset()
+    if adata is None:
+        logger.warning("No working dataset available for subsetting.")
+        return None
+    
+    if group1 == group2:
+        logger.warning("Group 1 and Group 2 are the same. No subsetting performed.")
+        return None
+    
+    # Filter by grouping variable and groups
+    if grouping and group1 and group2:
+        adata = adata[adata.obs[grouping].isin([group1, group2])].copy()
+    
+    # Filter by cell type if provided
+    if celltype and celltype != "All Cells":
+        if celltype_column not in adata.obs.columns:
+            logger.warning("Cell type column '%s' not found for subsetting.", celltype_column)
+            return None
+        adata = adata[adata.obs[celltype_column].astype(str) == str(celltype)].copy()
+    
+    #print(adata)
+    #print(adata.obs[grouping].value_counts())
+    
+    return adata
+
+def find_biological_replicates(adata, grouping):
+    """
+    Check for biological replicates in the dataset based on the specified grouping variable.
+
+    Parameters:
+    - adata: The AnnData object containing the dataset.
+    - grouping: The metadata column to group by for identifying biological replicates.
+
+    Returns:
+    - A pandas Series indicating the number of unique samples for each group in the specified grouping variable
+    """
+    continue_analysis = False
+    if adata is None or grouping not in adata.obs.columns:
+        logger.warning("Invalid dataset or grouping variable for finding biological replicates.")
+        return continue_analysis
+
+    state = get_state_store()
+    metadata_info = state.get("metadata_info", {})
+    metadata_sample_columns = metadata_info.get("sample_columns", [])
+
+    sample_column = resolve_sample_column(
+        adata.obs.columns,
+        metadata_sample_columns=metadata_sample_columns,
+        obs_df=adata.obs,
+    )
+    if sample_column is None:
+        logger.warning(
+            "No sample-ID-like column found in metadata; expected names like sampleID/sample_id."
+        )
+        return continue_analysis
+    
+    # Assuming that biological replicates are identified by unique values in the grouping column
+    biological_replicates = adata.obs.groupby(grouping)[sample_column].nunique()
+    # print(biological_replicates)
+
+    min_replicates = 2
+    if (biological_replicates < min_replicates).any():
+        logger.warning("Some groups have fewer than %d biological replicates. Cannot perform pseudobulk.", min_replicates)
+        return continue_analysis
+    else:
+        logger.info("Proceeding with pseudobulk. All groups have at least %d biological replicates.", min_replicates)
+        continue_analysis = True
+    
+    return continue_analysis
+
+def create_pseudobulk(adata, grouping=None, sample_column="sampleID"):
+    """
+    Create a pseudobulk dataset from the given AnnData object based on the specified grouping variable and sample column.
+
+    Parameters:
+    - adata: The AnnData object containing the dataset.
+    - grouping: The metadata column to group by for creating pseudobulk.
+    - sample_column: The metadata column that identifies individual samples (default is "sampleID").
+
+    Returns:
+    - A new AnnData object representing the pseudobulk dataset.
+    """
+    if adata is None:
+        logger.warning("Invalid dataset for creating pseudobulk.")
+        return None
+
+    if sample_column not in adata.obs.columns:
+        state = get_state_store()
+        metadata_info = state.get("metadata_info", {})
+        metadata_sample_columns = metadata_info.get("sample_columns", [])
+
+        resolved_sample_column = resolve_sample_column(
+            adata.obs.columns,
+            metadata_sample_columns=metadata_sample_columns,
+            obs_df=adata.obs,
+        )
+        if resolved_sample_column is None:
+            logger.warning(
+                "Invalid grouping/sample columns for creating pseudobulk. Could not resolve sample column from metadata."
+            )
+            return None
+        sample_column = resolved_sample_column
+
+    if sample_column not in adata.obs.columns:
+        logger.warning("Invalid dataset or grouping/sample columns for creating pseudobulk.")
+        return None
+    
+    # if grouping is None:
+    #     logger.error("Grouping variable is not specified for creating pseudobulk.")
+    #     raise ValueError("Grouping variable must be specified for creating pseudobulk.")
+    
+    adata = check_adata_type(adata)
+
+    # possibly temp
+    adata = adata.copy()
+
+    adata.obs[sample_column] = adata.obs[sample_column].astype(str)
+    if grouping is not None and grouping in adata.obs.columns:
+        adata.obs[grouping] = adata.obs[grouping].astype(str)
+
+    #print("decoupler version:", dc.__version__)
+    #print("adata x shape:",adata.X.shape)
+    #print("adata obs shape:",adata.obs.shape)
+    # end possible temp code
+
+    padata = dc.pp.pseudobulk(adata, sample_col=sample_column, groups_col=grouping, empty=False)
+
+    # TEMP
+
+    print("PseudoBulk shape:", padata.shape)
+
+    print("obs")
+    print(padata.obs.head())
+
+    print("var")
+    print(padata.var.head())
+
+    print("X shape")
+    print(padata.X.shape)
+
+    print("obs_names")
+    print(padata.obs_names[:5])
+
+    print("var_names")
+    print(padata.var_names[:5])
+
+    # END TEMP
+
+    logger.info("Pseudobulk dataset created with %d groups based on '%s' and '%s'.", padata.n_obs, grouping, sample_column)
+
+    
+    
+    return padata
+
+def check_adata_type(adata):
+    """
+    Return an AnnData containing raw counts for pseudobulk analysis.
+    """
+
+    if "counts" not in adata.layers:
+        raise ValueError(
+            "Raw counts layer ('counts') not found. "
+            "Pseudobulk requires integer count data."
+        )
+
+    return AnnData(
+        X=adata.layers["counts"].copy(),
+        obs=adata.obs.copy(),
+        var=adata.var.copy(),
+    )

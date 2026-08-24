@@ -1,12 +1,23 @@
 [project]
-name = "viral-scrnaseq-tool"
-version = "0.1.0"
-requires-python = ">=3.12"
+name = "scjoseki"
+version = "1.0.0"
+requires-python = ">=3.12,<3.14"
 dependencies=[
-    "pandas>=3.0,<4",
+    "pandas>=2.2,<3",
     "numpy>=2,<3",
     "dash>=4,<5",
-    "scanpy[leiden]>=1.11.0"
+    "scanpy[leiden]>=1.11.0",
+    "dash-bootstrap-components>=2.0.0",
+    "dash-uploader>=0.6.1",
+    "decoupler>=2.0.0",
+    "pydeseq2>=0.5.0,<0.6",
+    "anndata>=0.12.0,<0.13",
+    "liana>=1.8.0,<2.0.0",
+    "networkx>=3.5,<4.0",
+    "celltypist>=1.7,<2.0",
+    "gseapy>=1.3.1,<2.0",
+    "dash-cytoscape>=1.0.0,<2.0",
+    "kaleido>=0.2.1,<2.0",
 ]
 readme = "README.md"
 authors = [
@@ -18,18 +29,38 @@ description = "An easy-to-use platform for viral scRNA-seq analysis, built for w
 dev = [
     "pytest>=8.0",
     "mypy>=1.0",
-    "ruff"
+    "ruff==0.15.21",
 ]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint.per-file-ignores]
+"src/viral_platform/analysis/CellCellLIANA.py" = ["N999"]
 
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"viral_platform" = [
+    "ISG_sets/*.txt",
+    "viral_gene_sets/*.txt",
+    "intact/*.tsv",
+    "assets/*",
+]
+"viral_platform.scmovir" = [
+    "scmovir.db",
+]
+
 [project.scripts]
-viral-scrnaseq-tool="viral_platform.main:main"
+scjoseki="viral_platform.main:main"
 
 [tool.pytest.ini_options]
 testpaths=["tests"]

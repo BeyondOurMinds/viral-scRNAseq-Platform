@@ -1,0 +1,13 @@
+PB2
+PB1
+PA
+HA
+NP
+NA
+M
+M1
+BM2
+NB
+NS
+NS1
+NEP,NS2
