@@ -2,6 +2,7 @@ from dash import Input, Output
 
 from viral_platform.layout.navigation import NAV_ITEMS
 from viral_platform.layout.sidebar import path_to_token
+from viral_platform.state.dataset_store import get_working_dataset
 
 _SIDEBAR_EXPANDED_WIDTH = "280px"
 _SIDEBAR_COLLAPSED_WIDTH = "88px"
@@ -68,3 +69,19 @@ def register_sidebar_callbacks(app):
             footer_style = {"display": "block"}
 
         return (sidebar_style, content_style, brand_copy_style, footer_style, *tuple(label_style for _ in NAV_ITEMS))
+
+    @app.callback(
+        Output("sidebar-dataset-status", "children"),
+        Output("sidebar-dataset-metrics", "children"),
+        Input("active-dataset-version", "data"),
+    )
+    def update_dataset_summary(_dataset_version):
+        """Show the current dataset filename and size metrics in the sidebar."""
+        adata = get_working_dataset()
+        if adata is None:
+            return "No dataset loaded", ""
+
+        filename = adata.uns.get("source_filename")
+        status = str(filename) if filename else "Loaded dataset"
+        metrics = f"{adata.n_obs} cells • {adata.n_vars} genes"
+        return status, metrics

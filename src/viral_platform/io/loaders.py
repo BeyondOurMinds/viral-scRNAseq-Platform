@@ -315,6 +315,7 @@ def load_file_from_path(file_path):
     try:
         logger.info("Loading '%s' with loader for '%s'.", normalized, ext)
         adata = loader(normalized)
+        adata.uns["source_filename"] = Path(normalized).name
         logger.info(
             "Loaded %d cells × %d genes from '%s'.", adata.n_obs, adata.n_vars, normalized
         )

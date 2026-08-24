@@ -64,6 +64,7 @@ def create_sidebar():
                 children=[
                     html.P("Current Dataset", className="sidebar-footer-title"),
                     html.P("No dataset loaded", id="sidebar-dataset-status", className="sidebar-footer-status"),
+                    html.P("", id="sidebar-dataset-metrics", className="sidebar-footer-metrics"),
                 ],
             ),
         ],

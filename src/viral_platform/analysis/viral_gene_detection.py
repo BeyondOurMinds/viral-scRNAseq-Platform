@@ -6,6 +6,12 @@ from viral_platform.state.dataset_store import get_dataset, get_working_dataset
 
 VIRAL_SETS_PATH = Path(__file__).parent.parent / "viral_gene_sets"
 
+print("Detection module __file__:", __file__)
+print("Viral sets path:", VIRAL_SETS_PATH)
+print("Viral sets exists:", VIRAL_SETS_PATH.exists())
+
+
+
 
 def normalize_gene_name(gene, viral_names=None):
     """

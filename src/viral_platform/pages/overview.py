@@ -1,5 +1,7 @@
 from dash import html, register_page
 
+from viral_platform.layout.Overview_panel import create_overview_panel
+
 
 register_page(__name__, path="/", name="Overview", order=0)
 
@@ -9,15 +11,6 @@ def layout():
     return html.Div(
         className="module-page",
         children=[
-            html.Div(
-                className="module-panel",
-                children=[
-                    html.H2("Overview"),
-                    html.P(
-                        "Use the left navigation to move between upload and analysis modules. "
-                        "Each module is routed as its own Dash page."
-                    ),
-                ],
-            )
+            create_overview_panel(),
         ],
     )

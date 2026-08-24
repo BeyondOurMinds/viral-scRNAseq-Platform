@@ -131,7 +131,19 @@ body {
 
 .sidebar-footer-status {
   margin: 4px 0 0;
-  font-size: 0.92rem;
+  font-size: clamp(0.74rem, 0.95vw, 0.92rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.sidebar-footer-metrics {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .app-content-shell {
