@@ -6,7 +6,7 @@ SCJoseki can be installed in 3 different ways:
 
 1. The EXE available within the GitHub releases.
 2. Through Docker
-```dockerfile
+```bash
 docker pull beyondourminds/scjoseki:latest
 ```
 3. Via PIP
