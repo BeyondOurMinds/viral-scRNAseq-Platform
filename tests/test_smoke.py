@@ -5,6 +5,44 @@ def test_cli_imports():
     assert ViralApp is not None
 
 
+def test_viral_app_uses_container_bind_settings(monkeypatch, caplog):
+    from viral_platform.gui import ViralApp
+
+    calls = {}
+
+    class DummyLogger:
+        disabled = False
+        propagate = True
+
+    class DummyServer:
+        logger = DummyLogger()
+
+    class DummyApp:
+        def __init__(self):
+            self.server = DummyServer()
+
+        def run(self, **kwargs):
+            calls.update(kwargs)
+
+    app = object.__new__(ViralApp)
+    app.app = DummyApp()
+
+    monkeypatch.setenv("HOST", "0.0.0.0")
+    monkeypatch.setenv("PORT", "8050")
+
+    with caplog.at_level("INFO"):
+        ViralApp.run(app)
+
+    assert calls == {
+        "host": "0.0.0.0",
+        "port": 8050,
+        "debug": False,
+        "use_reloader": False,
+        "dev_tools_hot_reload": False,
+    }
+    assert "http://localhost:8050/" in caplog.text
+
+
 def test_extract_prefix_accepts_geo_counts_filename():
     from viral_platform.io.loaders import _extract_prefix
 

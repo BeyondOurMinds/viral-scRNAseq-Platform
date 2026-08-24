@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import shutil
 import tempfile
@@ -6,8 +7,13 @@ import time
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-import tkinter as tk
-from tkinter import filedialog
+
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+except ModuleNotFoundError:  # pragma: no cover - headless/container environments
+    tk = None
+    filedialog = None
 
 import anndata as ad
 import pandas as pd
@@ -377,18 +383,50 @@ def _build_log_text():
     return "\n".join(lines)
 
 
-# Native Windows Save As dialog
+def _resolve_export_directory():
+    """Return a writable directory for exported files.
+
+    In Docker, callers can mount a host volume at /exports or set
+    SCJOSEKI_EXPORT_DIR to any writable path. The directory is created
+    automatically so users do not need to pre-create it.
+    """
+    override_dir = os.getenv("SCJOSEKI_EXPORT_DIR")
+    if override_dir:
+        export_dir = Path(override_dir).expanduser()
+        export_dir.mkdir(parents=True, exist_ok=True)
+        return export_dir
+
+    if tk is None or filedialog is None or not os.environ.get("DISPLAY"):
+        export_dir = Path("/exports")
+        export_dir.mkdir(parents=True, exist_ok=True)
+        return export_dir
+
+    return None
+
+
+# Native save dialog when a GUI is available; otherwise fall back to a filesystem path.
 def _choose_save_path(
     title,
     initial_filename,
     filetypes,
 ):
     """
-    Open a native Windows Save As dialog.
+    Open a native save dialog when Tk is available.
 
-    Returns the selected path as a Path, or None if cancelled.
+    In headless/container runs, fall back to a writable export directory so the
+    export flow remains usable without a local GUI display.
     """
-    root = tk.Tk()
+    export_dir = _resolve_export_directory()
+    if export_dir is not None:
+        return export_dir / initial_filename
+
+    try:
+        root = tk.Tk()
+    except Exception:
+        fallback_dir = Path("/exports")
+        fallback_dir.mkdir(parents=True, exist_ok=True)
+        return fallback_dir / initial_filename
+
     root.withdraw()
     root.attributes("-topmost", True)
 
@@ -399,9 +437,13 @@ def _choose_save_path(
             filetypes=filetypes,
             defaultextension=filetypes[0][1],
         )
-
+    except Exception:
+        selected_path = ""
     finally:
-        root.destroy()
+        try:
+            root.destroy()
+        except Exception:
+            pass
 
     if not selected_path:
         return None

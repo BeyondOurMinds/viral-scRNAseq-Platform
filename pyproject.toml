@@ -42,8 +42,22 @@ target-version = "py312"
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"viral_platform" = [
+    "ISG_sets/*.txt",
+    "viral_gene_sets/*.txt",
+    "intact/*.tsv",
+    "assets/*",
+]
+"viral_platform.scmovir" = [
+    "scmovir.db",
+]
 
 [project.scripts]
 scjoseki="viral_platform.main:main"
