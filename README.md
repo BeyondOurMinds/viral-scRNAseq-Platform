@@ -9,7 +9,7 @@ The application contains many of the standard modular workflows found in scRNA-s
 
 
 An overview of the application can be found on the first page whenever you load the application (or let's be honest, you can just look through the code to read it all before downloading). 
-At current, the application only supports H5AD files or zipped 10x genomics cell ranger files.
+At current, the application only supports H5AD files or zipped 10x Genomics Cell Ranger files.
 
 
 <img width="1896" height="908" alt="Screenshot 2026-08-26 211800" src="https://github.com/user-attachments/assets/545abd10-0954-464d-a166-d4fd4d31a942" />
@@ -20,6 +20,8 @@ Almost every module offers some form of data visualisation, such as violin, bar,
 <img width="1892" height="913" alt="Screenshot 2026-08-26 214142" src="https://github.com/user-attachments/assets/8f5effd3-8f46-496b-b42c-397af7ed759d" />
 
 
+## Testing
+The dataset used for the development and testing of SCJoseki can be found within the assets folder, called TestEBVDataset.h5ad, 
 
 
 ## Installation
